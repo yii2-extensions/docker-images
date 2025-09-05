@@ -18,9 +18,9 @@ wait_for_service() {
     local service=$3
     local max_tries=30
     local try=0
-    
+
     echo -e "${YELLOW}Waiting for ${service}...${NC}"
-    
+
     while ! nc -z "$host" "$port" 2>/dev/null; do
         try=$((try + 1))
         if [ $try -gt $max_tries ]; then
@@ -29,7 +29,7 @@ wait_for_service() {
         fi
         sleep 2
     done
-    
+
     echo -e "${GREEN}${service} is ready${NC}"
     return 0
 }
@@ -55,7 +55,7 @@ if [ "$BUILD_TYPE" = "dev" ] || [ "$BUILD_TYPE" = "full" ]; then
     if [ "$XDEBUG_ENABLED" = "true" ]; then
         echo -e "${YELLOW}Enabling Xdebug...${NC}"
         phpenmod xdebug
-        
+
         # Update Xdebug settings if provided
         if [ -n "$XDEBUG_HOST" ]; then
             sed -i "s/xdebug.client_host.*/xdebug.client_host = ${XDEBUG_HOST}/g" /etc/php/${PHP_VERSION}/mods-available/xdebug.ini
@@ -94,10 +94,10 @@ fi
 if [ -f "/var/www/app/composer.json" ] && [ ! -d "/var/www/app/vendor" ]; then
     echo -e "${YELLOW}Installing Composer dependencies...${NC}"
     cd /var/www/app
-    
+
     # Set composer home for www-data
     export COMPOSER_HOME=/var/www/.composer
-    
+
     if [ "$YII_ENV" = "prod" ] || [ "$BUILD_TYPE" = "prod" ]; then
         echo -e "${YELLOW}Installing production dependencies (--no-dev)${NC}"
         sudo -u www-data composer install \
@@ -113,12 +113,12 @@ if [ -f "/var/www/app/composer.json" ] && [ ! -d "/var/www/app/vendor" ]; then
             --no-progress \
             --optimize-autoloader
     fi
-    
+
     # Run post-install scripts
     if [ -f "yii" ]; then
         chmod +x yii
     fi
-    
+
     echo -e "${GREEN}Dependencies installed successfully${NC}"
 fi
 
@@ -128,22 +128,22 @@ if [ "$BUILD_TYPE" = "full" ] || [ "$YII_ENV" = "test" ]; then
     if [ -n "$DB_MYSQL_HOST" ]; then
         wait_for_service "$DB_MYSQL_HOST" 3306 "MySQL"
     fi
-    
+
     # Wait for PostgreSQL
     if [ -n "$DB_PGSQL_HOST" ]; then
         wait_for_service "$DB_PGSQL_HOST" 5432 "PostgreSQL"
     fi
-    
+
     # Wait for Redis
     if [ -n "$DB_REDIS_HOST" ]; then
         wait_for_service "$DB_REDIS_HOST" 6379 "Redis"
     fi
-    
+
     # Wait for MSSQL
     if [ -n "$DB_MSSQL_HOST" ]; then
         wait_for_service "$DB_MSSQL_HOST" 1433 "SQL Server"
     fi
-    
+
     # Wait for Oracle
     if [ -n "$DB_ORACLE_HOST" ]; then
         wait_for_service "$DB_ORACLE_HOST" 1521 "Oracle"
@@ -158,6 +158,7 @@ if [ -f "/var/www/app/yii" ] && [ "$YII_ENV" != "test" ]; then
 fi
 
 # Create health check endpoint
+if [ "${ENABLE_HEALTH_ENDPOINT:-false}" = "true" ]; then
 cat > /var/www/app/web/health.php << 'EOF'
 <?php
 header('Content-Type: application/json');
@@ -196,6 +197,7 @@ echo json_encode($health, JSON_PRETTY_PRINT);
 EOF
 
 chown www-data:www-data /var/www/app/web/health.php 2>/dev/null || true
+fi
 
 echo -e "${GREEN}Container initialization complete${NC}"
 

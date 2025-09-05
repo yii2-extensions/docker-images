@@ -547,7 +547,7 @@ final class Checker
     /**
      * Check if command exists in PATH
      */
-    public function checkCommandExists($command)
+    public function checkCommandExists(string $command): bool
     {
         $locator  = (PHP_OS_FAMILY === 'Windows') ? 'where' : 'command -v';
         $redirect = (PHP_OS_FAMILY === 'Windows') ? ' > nul 2>&1' : ' > /dev/null 2>&1';

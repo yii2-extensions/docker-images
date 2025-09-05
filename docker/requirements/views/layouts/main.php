@@ -1,7 +1,7 @@
 <?php
 /**
  * Main layout template - completely separated from logic
- * 
+ *
  * @var array $result Requirement check result
  * @var array $system System information
  * @var array $summary Summary statistics
@@ -19,11 +19,11 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Yii2 Requirements Checker - <?= ViewRenderer::escape(ucfirst($system['build_type'])) ?> Build</title>
-    
+
     <!-- Bootstrap 5.3 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
     <!-- Custom Styles -->
     <style>
         :root {
@@ -202,15 +202,15 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
             body {
                 padding-left: 0;
             }
-            
+
             .sidebar {
                 transform: translateX(-100%);
             }
-            
+
             .sidebar.show {
                 transform: translateX(0);
             }
-            
+
             .main-header {
                 left: 0;
             }
@@ -337,7 +337,7 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
             <h1>System Requirements Check</h1>
             <small class="text-muted"><?= ViewRenderer::escape($statusMessage) ?></small>
         </div>
-        
+
         <div class="header-status">
             <div class="status-indicator status-<?= $overallStatus ?>">
                 <i class="bi bi-<?= ComponentHelper::getStatusIcon($overallStatus === 'success' ? 'passed' : ($overallStatus === 'warning' ? 'warning' : 'failed')) ?>"></i>
@@ -371,8 +371,8 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
         <!-- Footer -->
         <footer class="text-center py-4 mt-5 border-top">
             <small class="text-muted">
-                Generated on <?= date('Y-m-d H:i:s T') ?> | 
-                PHP <?= ViewRenderer::escape(PHP_VERSION) ?> | 
+                Generated on <?= date('Y-m-d H:i:s T') ?> |
+                PHP <?= ViewRenderer::escape(PHP_VERSION) ?> |
                 Build: <?= ViewRenderer::escape($system['build_type']) ?>
             </small>
         </footer>
@@ -380,20 +380,20 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Custom JavaScript -->
     <script>
         // Theme toggle functionality
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
-        
+
         themeToggle.addEventListener('click', () => {
             const currentTheme = document.documentElement.getAttribute('data-bs-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
+
             document.documentElement.setAttribute('data-bs-theme', newTheme);
             themeIcon.className = newTheme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-            
+
             localStorage.setItem('theme', newTheme);
         });
 
@@ -409,7 +409,7 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
                 const target = document.querySelector(link.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    
+
                     // Update active nav
                     document.querySelectorAll('.nav-link').forEach(navLink => {
                         navLink.classList.remove('active');
@@ -448,9 +448,9 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
             overlay.className = 'position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50';
             overlay.style.zIndex = '1025';
             overlay.style.display = 'none';
-            
+
             document.body.appendChild(overlay);
-            
+
             // Add mobile toggle button
             const toggleBtn = document.createElement('button');
             toggleBtn.className = 'btn btn-primary position-fixed';
@@ -458,17 +458,17 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
             toggleBtn.style.left = '20px';
             toggleBtn.style.zIndex = '1040';
             toggleBtn.innerHTML = '<i class="bi bi-list"></i>';
-            
+
             toggleBtn.addEventListener('click', () => {
                 sidebar.classList.toggle('show');
                 overlay.style.display = sidebar.classList.contains('show') ? 'block' : 'none';
             });
-            
+
             overlay.addEventListener('click', () => {
                 sidebar.classList.remove('show');
                 overlay.style.display = 'none';
             });
-            
+
             document.body.appendChild(toggleBtn);
         }
     </script>
