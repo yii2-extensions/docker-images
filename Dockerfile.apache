@@ -1,0 +1,293 @@
+# Yii2 Docker - Debian Trixie with (Apache + MOD_PHP)
+# Supports: full (testing), dev (development), prod (production)
+
+ARG PHP_VERSION=8.4
+ARG BUILD_TYPE=dev
+
+###########################################
+# Stage 1: Base System
+###########################################
+FROM debian:trixie-slim AS base
+
+ARG PHP_VERSION
+ENV DEBIAN_FRONTEND=noninteractive \
+    PHP_VERSION=${PHP_VERSION}
+
+# Install Apache, PHP and core extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apache2 \
+    libapache2-mod-php${PHP_VERSION} \
+    php${PHP_VERSION}-cli \
+    php${PHP_VERSION}-common \
+    php${PHP_VERSION}-curl \
+    php${PHP_VERSION}-mbstring \
+    php${PHP_VERSION}-xml \
+    php${PHP_VERSION}-zip \
+    php${PHP_VERSION}-intl \
+    php${PHP_VERSION}-bcmath \
+    php${PHP_VERSION}-opcache \
+    ca-certificates \
+    curl \
+    unzip \
+    netcat-openbsd \
+    netcat-openbsd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/*
+
+# Enable Apache modules
+RUN a2enmod rewrite headers deflate expires ssl proxy_fcgi setenvif \
+    && a2dissite 000-default
+
+###########################################
+# Stage 2: Builder (compile extensions)
+###########################################
+FROM base AS builder
+
+ARG PHP_VERSION
+ARG BUILD_TYPE
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    php${PHP_VERSION}-dev \
+    php-pear \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installation scripts
+COPY docker/scripts/install-*.sh /tmp/scripts/
+RUN chmod +x /tmp/scripts/*.sh
+
+# Install database drivers based on BUILD_TYPE
+RUN if [ "$BUILD_TYPE" = "full" ]; then \
+        /tmp/scripts/install-oracle.sh && \
+        /tmp/scripts/install-mssql.sh; \
+    fi
+
+# Clean up builder artifacts
+RUN rm -rf /tmp/scripts
+
+###########################################
+# Stage 3: Asset Builder (Node.js/NPM)
+###########################################
+FROM node:20-slim AS asset-builder
+
+WORKDIR /build
+
+# Install composer for foxy integration
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    unzip \
+    netcat-openbsd \
+    && curl -sS https://getcomposer.org/installer | php -- \
+        --install-dir=/usr/local/bin \
+        --filename=composer \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-install foxy globally to speed up builds
+RUN composer global require php-forge/foxy
+
+###########################################
+# Stage 4: Development Image
+###########################################
+FROM base AS dev
+
+ARG PHP_VERSION
+
+# Install development tools and database clients
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    php${PHP_VERSION}-mysql \
+    php${PHP_VERSION}-pgsql \
+    php${PHP_VERSION}-sqlite3 \
+    php${PHP_VERSION}-redis \
+    php${PHP_VERSION}-memcached \
+    php${PHP_VERSION}-mongodb \
+    php${PHP_VERSION}-imagick \
+    php${PHP_VERSION}-gd \
+    php${PHP_VERSION}-soap \
+    php${PHP_VERSION}-xdebug \
+    php${PHP_VERSION}-apcu \
+    git \
+    vim \
+    nano \
+    sudo \
+    default-mysql-client \
+    postgresql-client \
+    redis-tools \
+    supervisor \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/*
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- \
+        --install-dir=/usr/local/bin \
+        --filename=composer
+
+# Copy Xdebug configuration
+COPY docker/configs/php/xdebug.ini /etc/php/${PHP_VERSION}/mods-available/
+
+# Create working directories
+RUN mkdir -p /var/www/.composer /var/www/.npm \
+    && chown -R www-data:www-data /var/www
+
+###########################################
+# Stage 5: Oracle Files Collector  
+###########################################
+FROM builder AS oracle_files
+RUN mkdir -p /copy_stage/oracle /copy_stage/microsoft /copy_stage/php_ext && \
+    (cp -r /opt/oracle/* /copy_stage/oracle/ 2>/dev/null || true) && \
+    (cp -r /opt/microsoft/* /copy_stage/microsoft/ 2>/dev/null || true) && \
+    (cp /usr/lib/php/20240924/*.so /copy_stage/php_ext/ 2>/dev/null || true)
+
+###########################################
+# Stage 6: Full Testing Image
+###########################################
+FROM dev AS full
+
+ARG PHP_VERSION
+
+# Copy files from intermediate stage
+COPY --from=oracle_files /copy_stage/ /opt_stage/
+RUN mkdir -p /opt/oracle /opt/microsoft /usr/lib/php/20240924 && \
+    (cp -r /opt_stage/oracle/* /opt/oracle/ 2>/dev/null || true) && \
+    (cp -r /opt_stage/microsoft/* /opt/microsoft/ 2>/dev/null || true) && \
+    (cp /opt_stage/php_ext/*.so /usr/lib/php/20240924/ 2>/dev/null || true) && \
+    rm -rf /opt_stage
+
+# Install additional testing tools and Oracle/MSSQL runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    php${PHP_VERSION}-phpdbg \
+    php${PHP_VERSION}-yaml \
+    php${PHP_VERSION}-tidy \
+    libaio1t64 \
+    unixodbc \
+    gnupg \
+    curl \
+    apt-transport-https \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [arch=amd64,armhf,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+        msodbcsql18 \
+        unixodbc-dev \
+        odbcinst \
+    && apt-get remove -y --purge \
+        gnupg \
+        apt-transport-https \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1 \
+    && echo "/opt/oracle/instantclient_21_13" > /etc/ld.so.conf.d/oracle-instantclient.conf \
+    && ldconfig
+
+# Enable Oracle and MSSQL extensions (if installed)
+RUN PHP_EXT_DIR=$(php -r "echo ini_get('extension_dir');") && \
+    if [ -f "$PHP_EXT_DIR/oci8.so" ]; then \
+        echo "extension=oci8.so" > /etc/php/${PHP_VERSION}/mods-available/oci8.ini && \
+        phpenmod oci8; \
+    fi && \
+    if [ -f "$PHP_EXT_DIR/pdo_oci.so" ]; then \
+        echo "extension=pdo_oci.so" > /etc/php/${PHP_VERSION}/mods-available/pdo_oci.ini && \
+        phpenmod pdo_oci; \
+    fi && \
+    if [ -f "$PHP_EXT_DIR/sqlsrv.so" ]; then \
+        echo "extension=sqlsrv.so" > /etc/php/${PHP_VERSION}/mods-available/sqlsrv.ini && \
+        phpenmod sqlsrv; \
+    fi && \
+    if [ -f "$PHP_EXT_DIR/pdo_sqlsrv.so" ]; then \
+        echo "extension=pdo_sqlsrv.so" > /etc/php/${PHP_VERSION}/mods-available/pdo_sqlsrv.ini && \
+        phpenmod pdo_sqlsrv; \
+    fi
+
+# Set environment for Oracle (conditional)
+ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_21_13" \
+    NLS_LANG=AMERICAN_AMERICA.UTF8
+
+###########################################
+# Stage 7: Production Image
+###########################################
+FROM base AS prod
+
+ARG PHP_VERSION
+
+# Install only production extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    php${PHP_VERSION}-mysql \
+    php${PHP_VERSION}-pgsql \
+    php${PHP_VERSION}-redis \
+    php${PHP_VERSION}-apcu \
+    php${PHP_VERSION}-imagick \
+    php${PHP_VERSION}-gd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/*
+
+# Disable Xdebug and development settings
+RUN phpdismod xdebug 2>/dev/null || true
+
+# Security hardening
+RUN rm -rf /var/www/html/* \
+    && a2dismod status 2>/dev/null || true \
+    && a2dismod info 2>/dev/null || true
+
+###########################################
+# Stage 8: Final Image Selection
+###########################################
+FROM ${BUILD_TYPE} AS final
+
+ARG PHP_VERSION
+ARG BUILD_TYPE
+
+# Environment variables
+ENV APACHE_RUN_USER=www-data \
+    APACHE_RUN_GROUP=www-data \
+    APACHE_LOG_DIR=/var/log/apache2 \
+    APACHE_LOCK_DIR=/var/lock/apache2 \
+    APACHE_PID_FILE=/var/run/apache2/apache2.pid \
+    APACHE_RUN_DIR=/var/run/apache2 \
+    PHP_VERSION=${PHP_VERSION} \
+    BUILD_TYPE=${BUILD_TYPE}
+
+# Ensure run directory exists
+RUN mkdir -p /var/run/apache2 \
+    && chown www-data:www-data /var/run/apache2
+
+# Copy configuration files
+COPY docker/configs/apache/apache2.conf /etc/apache2/apache2.conf
+COPY docker/configs/apache/vhost.conf /etc/apache2/sites-available/yii2.conf
+COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
+COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
+
+# Copy entrypoint script and requirements checker to temp location
+COPY docker/scripts/entrypoint.sh /usr/local/bin/entrypoint
+COPY docker/requirements /opt/requirements-template
+RUN chmod +x /usr/local/bin/entrypoint
+
+# Enable the site
+RUN a2ensite yii2
+
+# Create app directory
+WORKDIR /var/www/app
+
+# Expose ports
+EXPOSE 80 443
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["entrypoint"]
+CMD ["apache2", "-DFOREGROUND"]
