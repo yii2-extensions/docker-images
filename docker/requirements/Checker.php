@@ -610,30 +610,4 @@ final class Checker
     {
         return $this->result;
     }
-
-    /**
-     * Render HTML output
-     */
-    public function renderHtml(): void
-    {
-        if ($this->result === null) {
-            $this->check();
-        }
-
-        $result = $this->result;
-
-        include __DIR__ . '/template.php';
-    }
-
-    /**
-     * Get JSON output
-     */
-    public function getJson(): bool|string
-    {
-        if ($this->result === null) {
-            $this->check();
-        }
-
-        return json_encode($this->result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    }
 }

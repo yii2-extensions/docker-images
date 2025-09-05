@@ -379,7 +379,7 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
     </div>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 
     <!-- Custom JavaScript -->
     <script>
@@ -421,7 +421,7 @@ $successRate = $summary['total'] > 0 ? round(($summary['passed'] / $summary['tot
 
         // Export functionality
         function exportReport() {
-            const data = <?= json_encode($result) ?>;
+            const data = <?= json_encode($result, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
