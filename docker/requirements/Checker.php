@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 final class Checker
 {
-    private $result;
-    private $buildType;
-    private $phpVersion;
-    private $systemInfo;
+    private array|string|null $result = null;
+    private string $buildType = '';
+    private string $phpVersion = '';
+    private array $systemInfo = [];
 
     public function __construct()
     {
@@ -19,7 +19,7 @@ final class Checker
     /**
      * Initialize system information
      */
-    private function initSystemInfo()
+    private function initSystemInfo(): void
     {
         $this->systemInfo = [
             'php_version' => $this->phpVersion,
@@ -39,20 +39,22 @@ final class Checker
     /**
      * Get system uptime
      */
-    private function getUptime()
+    private function getUptime(): string
     {
         if (file_exists('/proc/uptime')) {
             $uptime = file_get_contents('/proc/uptime');
             $uptime = (float) explode(' ', $uptime)[0];
+
             return $this->formatUptime($uptime);
         }
+
         return 'Unknown';
     }
 
     /**
      * Format uptime in human readable format
      */
-    private function formatUptime($seconds)
+    private function formatUptime($seconds): string
     {
         $days = floor($seconds / 86400);
         $hours = floor(($seconds % 86400) / 3600);
@@ -64,7 +66,7 @@ final class Checker
     /**
      * Check requirements based on build type
      */
-    public function check($requirements = null)
+    public function check($requirements = null): static
     {
         if ($requirements === null) {
             $requirements = $this->getDefaultRequirements();
@@ -126,7 +128,7 @@ final class Checker
     /**
      * Process individual requirement
      */
-    private function processRequirement(&$requirement)
+    private function processRequirement(&$requirement): void
     {
         // No need for eval processing anymore - all conditions are direct boolean values
 
@@ -142,23 +144,26 @@ final class Checker
     /**
      * Normalize requirement structure
      */
-    private function normalizeRequirement($requirement)
+    private function normalizeRequirement($requirement): array
     {
-        return array_merge([
-            'name' => 'Unknown Requirement',
-            'condition' => false,
-            'mandatory' => false,
-            'description' => '',
-            'recommendation' => '',
-            'version_info' => null,
-            'performance_test' => null
-        ], $requirement);
+        return array_merge(
+            [
+                'name' => 'Unknown Requirement',
+                'condition' => false,
+                'mandatory' => false,
+                'description' => '',
+                'recommendation' => '',
+                'version_info' => null,
+                'performance_test' => null,
+            ],
+            $requirement,
+        );
     }
 
     /**
      * Run performance test
      */
-    private function runPerformanceTest($testType)
+    private function runPerformanceTest($testType): array|null
     {
         switch ($testType) {
             case 'opcache':
@@ -175,7 +180,7 @@ final class Checker
     /**
      * Get OPcache metrics
      */
-    private function getOpcacheMetrics()
+    private function getOpcacheMetrics(): array|null
     {
         if (!$this->checkOpcacheLoaded() || !function_exists('opcache_get_status')) {
             return null;
@@ -222,7 +227,7 @@ final class Checker
     /**
      * Get memory metrics
      */
-    private function getMemoryMetrics()
+    private function getMemoryMetrics(): array
     {
         return [
             'current_usage' => round(memory_get_usage(true) / 1024 / 1024, 2) . ' MB',
@@ -234,7 +239,7 @@ final class Checker
     /**
      * Get extension metrics
      */
-    private function getExtensionMetrics()
+    private function getExtensionMetrics(): array
     {
         $extensions = get_loaded_extensions();
         $core = ['Core', 'date', 'libxml', 'pcre', 'unicode', 'filter', 'SPL', 'session', 'standard'];
@@ -249,7 +254,7 @@ final class Checker
     /**
      * Get default requirements based on build type
      */
-    private function getDefaultRequirements()
+    private function getDefaultRequirements(): array
     {
         $requirements = [
             'Core PHP Requirements' => [
@@ -484,7 +489,7 @@ final class Checker
     /**
      * Check if OPcache is loaded (works for both extension and core versions)
      */
-    public function checkOpcacheLoaded()
+    public function checkOpcacheLoaded(): bool
     {
         // In PHP 8.0+, OPcache is part of core but still shows as extension
         // Check multiple ways to ensure detection
@@ -521,22 +526,24 @@ final class Checker
     /**
      * Check if JIT is enabled and configured
      */
-    public function checkJitEnabled()
+    public function checkJitEnabled(): bool
     {
-        if (!$this->checkOpcacheLoaded()) {
+        if ($this->checkOpcacheLoaded() === false) {
             return false;
         }
 
         $jitSetting = ini_get('opcache.jit');
+
         return $jitSetting && $jitSetting !== '0' && $jitSetting !== 'disable' && $jitSetting !== 'off';
     }
 
     /**
      * Check if memory limit meets minimum requirement
      */
-    public function checkMemoryLimit($minimumLimit)
+    public function checkMemoryLimit($minimumLimit): bool
     {
         $memoryLimit = ini_get('memory_limit');
+
         if ($memoryLimit === '-1') {
             return true; // Unlimited
         }
@@ -564,52 +571,42 @@ final class Checker
     /**
      * Compare byte sizes
      */
-    public function compareByteSize($a, $b, $operator = '>=')
+    public function compareByteSize($a, $b, $operator = '>='): bool
     {
         $bytesA = $this->getByteSize($a);
         $bytesB = $this->getByteSize($b);
 
-        switch ($operator) {
-            case '>=':
-                return $bytesA >= $bytesB;
-            case '>':
-                return $bytesA > $bytesB;
-            case '<=':
-                return $bytesA <= $bytesB;
-            case '<':
-                return $bytesA < $bytesB;
-            case '==':
-                return $bytesA == $bytesB;
-            default:
-                return false;
-        }
+        return match ($operator) {
+            '>=' => $bytesA >= $bytesB,
+            '>'  => $bytesA >  $bytesB,
+            '<=' => $bytesA <= $bytesB,
+            '<'  => $bytesA <  $bytesB,
+            '==' => $bytesA == $bytesB,
+            default => false,
+        };
     }
 
     /**
      * Convert size string to bytes
      */
-    public function getByteSize($size)
+    public function getByteSize($size): int
     {
         $size = trim($size);
         $last = strtolower($size[strlen($size)-1]);
         $size = (int) $size;
 
-        switch($last) {
-            case 'g':
-                $size *= 1024;
-            case 'm':
-                $size *= 1024;
-            case 'k':
-                $size *= 1024;
-        }
-
-        return $size;
+        return match ($last) {
+            'g' => $size * 1024 * 1024 * 1024,
+            'm' => $size * 1024 * 1024,
+            'k' => $size * 1024,
+            default => $size,
+        };
     }
 
     /**
      * Get check result
      */
-    public function getResult()
+    public function getResult(): string|null
     {
         return $this->result;
     }
@@ -617,22 +614,23 @@ final class Checker
     /**
      * Render HTML output
      */
-    public function renderHtml()
+    public function renderHtml(): void
     {
-        if (!$this->result) {
+        if ($this->result === null) {
             $this->check();
         }
 
         $result = $this->result;
+
         include __DIR__ . '/template.php';
     }
 
     /**
      * Get JSON output
      */
-    public function getJson()
+    public function getJson(): bool|string
     {
-        if (!$this->result) {
+        if ($this->result === null) {
             $this->check();
         }
 
