@@ -1,14 +1,20 @@
-name: build
-
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+name: build
 
 env:
+  IMAGE_NAME: ${{ github.repository_owner }}/yii2-extensions
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/yii2-extensions
 
 jobs:
   build:
@@ -26,7 +32,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Login to GitHub Container Registry.
-      if: github.event_name == 'push'  # Solo en push, no en PR
+      if: github.event_name == 'push'  # Push events only; not on PRs
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
@@ -37,14 +43,14 @@ jobs:
       id: tags
       run: |
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          # Para PR: usar número del PR
+          # For PRs: use PR number
           echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
         elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          # Para main: usar 'latest' y el SHA corto
+          # For main: latest + short SHA
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
         else
-          # Para otras ramas: usar nombre de la rama
+          # Other branches: use branch name
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH_NAME}" >> $GITHUB_OUTPUT
         fi
