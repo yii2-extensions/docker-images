@@ -242,7 +242,7 @@ final class Checker
     private function getExtensionMetrics(): array
     {
         $extensions = get_loaded_extensions();
-        $core = ['Core', 'date', 'libxml', 'pcre', 'unicode', 'filter', 'SPL', 'session', 'standard'];
+        $core = ['Core', 'date', 'libxml', 'pcre', 'filter', 'SPL', 'session', 'standard'];
 
         return [
             'total' => count($extensions),
@@ -540,7 +540,7 @@ final class Checker
     /**
      * Check if memory limit meets minimum requirement
      */
-    public function checkMemoryLimit($minimumLimit): bool
+    public function checkMemoryLimit(string|int $minimumLimit): bool
     {
         $memoryLimit = ini_get('memory_limit');
 
@@ -571,7 +571,7 @@ final class Checker
     /**
      * Compare byte sizes
      */
-    public function compareByteSize($a, $b, $operator = '>='): bool
+    public function compareByteSize(string|int $a, string|int $b, string $operator = '>='): bool
     {
         $bytesA = $this->getByteSize($a);
         $bytesB = $this->getByteSize($b);
@@ -634,6 +634,6 @@ final class Checker
             $this->check();
         }
 
-        return json_encode($this->result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return json_encode($this->result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 }
