@@ -503,8 +503,7 @@ final class Checker
             return false;
         }
 
-        $enabled = ini_get('opcache.enable');
-        return $enabled === '1' || $enabled === 1 || $enabled === true;
+        return filter_var(ini_get('opcache.enable'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
     }
 
     /**
@@ -516,8 +515,7 @@ final class Checker
             return false;
         }
 
-        $enabled = ini_get('opcache.enable_cli');
-        return $enabled === '1' || $enabled === 1 || $enabled === true;
+        return filter_var(ini_get('opcache.enable_cli'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
     }
 
     /**
@@ -551,10 +549,14 @@ final class Checker
      */
     public function checkCommandExists($command)
     {
-        $locator = (PHP_OS_FAMILY === 'Windows') ? 'where' : 'command -v';
+        $locator  = (PHP_OS_FAMILY === 'Windows') ? 'where' : 'command -v';
+        $redirect = (PHP_OS_FAMILY === 'Windows') ? ' > nul 2>&1' : ' > /dev/null 2>&1';
+
         $arg = escapeshellarg($command);
+
         $code = 1;
-        exec("$locator $arg > /dev/null 2>&1", $void, $code);
+
+        exec("$locator $arg$redirect", $_, $code);
 
         return $code === 0;
     }

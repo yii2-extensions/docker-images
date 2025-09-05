@@ -44,6 +44,7 @@ ACCEPT_EULA=Y apt-get install -y --no-install-recommends mssql-tools18 || echo "
 
 # Install PHP development packages if not already installed
 PHP_VER=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+command -v php >/dev/null || { echo "PHP CLI not found. Install PHP before running this script."; exit 1; }
 apt-get install -y --no-install-recommends \
     php${PHP_VER}-dev \
     php-pear \

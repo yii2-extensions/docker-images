@@ -73,13 +73,13 @@ echo "Detected PHP version: $PHP_VERSION"
 
 cd /tmp
 
-if [ "$PHP_MAJOR" -ge 8 ] && [ "$PHP_MINOR" -ge 4 ]; then
+if { [ "$PHP_MAJOR" -gt 8 ] ; } || { [ "$PHP_MAJOR" -eq 8 ] && [ "$PHP_MINOR" -ge 4 ] ; }; then
     echo "PHP 8.4+ detected, installing PDO_OCI from PECL..."
-    
+
     # For PHP 8.4+, PDO_OCI is only available via PECL
     printf "instantclient,/opt/oracle/instantclient_21_13\n" | pecl install pdo_oci || {
         echo "Warning: PDO_OCI installation via PECL failed, trying alternative method..."
-        
+
         # Fallback: try with specific version
         printf "instantclient,/opt/oracle/instantclient_21_13\n" | pecl install pdo_oci-1.1.0 || {
             echo "Error: PDO_OCI installation failed completely"
@@ -88,18 +88,18 @@ if [ "$PHP_MAJOR" -ge 8 ] && [ "$PHP_MINOR" -ge 4 ]; then
     }
 else
     echo "PHP < 8.4 detected, trying PHP source method..."
-    
+
     # For older PHP versions, try downloading from PHP source
     wget -q "https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz" || {
         echo "Error: Could not download PHP source"
         exit 1
     }
-    
+
     tar xzf "php-${PHP_VERSION}.tar.gz"
-    
+
     if [ -d "php-${PHP_VERSION}/ext/pdo_oci/" ]; then
         cd "php-${PHP_VERSION}/ext/pdo_oci/"
-        
+
         # Build PDO_OCI extension
         phpize
         ./configure --with-pdo-oci=instantclient,/opt/oracle/instantclient_21_13,21.13
@@ -110,7 +110,7 @@ else
         cd /tmp
         printf "instantclient,/opt/oracle/instantclient_21_13\n" | pecl install pdo_oci
     fi
-    
+
     # Clean up
     cd /tmp
     rm -rf "php-${PHP_VERSION}" "php-${PHP_VERSION}.tar.gz"
