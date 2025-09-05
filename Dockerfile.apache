@@ -141,13 +141,14 @@ RUN mkdir -p /var/www/.composer /var/www/.npm \
     && chown -R www-data:www-data /var/www
 
 ###########################################
-# Stage 5: Oracle Files Collector  
+# Stage 5: Oracle Files Collector
 ###########################################
 FROM builder AS oracle_files
-RUN mkdir -p /copy_stage/oracle /copy_stage/microsoft /copy_stage/php_ext && \
+RUN PHP_EXT_DIR="$(php -r 'echo ini_get("extension_dir");')" && \
+    mkdir -p /copy_stage/oracle /copy_stage/microsoft /copy_stage/php_ext && \
     (cp -r /opt/oracle/* /copy_stage/oracle/ 2>/dev/null || true) && \
     (cp -r /opt/microsoft/* /copy_stage/microsoft/ 2>/dev/null || true) && \
-    (cp /usr/lib/php/20240924/*.so /copy_stage/php_ext/ 2>/dev/null || true)
+    (cp "$PHP_EXT_DIR"/*.so /copy_stage/php_ext/ 2>/dev/null || true)
 
 ###########################################
 # Stage 6: Full Testing Image
@@ -158,10 +159,11 @@ ARG PHP_VERSION
 
 # Copy files from intermediate stage
 COPY --from=oracle_files /copy_stage/ /opt_stage/
-RUN mkdir -p /opt/oracle /opt/microsoft /usr/lib/php/20240924 && \
+RUN PHP_EXT_DIR="$(php -r 'echo ini_get("extension_dir");')" && \
+    mkdir -p /opt/oracle /opt/microsoft "$PHP_EXT_DIR" && \
     (cp -r /opt_stage/oracle/* /opt/oracle/ 2>/dev/null || true) && \
     (cp -r /opt_stage/microsoft/* /opt/microsoft/ 2>/dev/null || true) && \
-    (cp /opt_stage/php_ext/*.so /usr/lib/php/20240924/ 2>/dev/null || true) && \
+    (cp /opt_stage/php_ext/*.so "$PHP_EXT_DIR"/ 2>/dev/null || true) && \
     rm -rf /opt_stage
 
 # Install additional testing tools and Oracle/MSSQL runtime dependencies

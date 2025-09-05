@@ -57,7 +57,7 @@ final class Checker
         $days = floor($seconds / 86400);
         $hours = floor(($seconds % 86400) / 3600);
         $minutes = floor(($seconds % 3600) / 60);
-        
+
         return sprintf('%dd %dh %dm', $days, $hours, $minutes);
     }
 
@@ -96,10 +96,10 @@ final class Checker
             foreach ($categoryRequirements as $requirement) {
                 $normalizedReq = $this->normalizeRequirement($requirement);
                 $this->processRequirement($normalizedReq);
-                
+
                 $category['requirements'][] = $normalizedReq;
                 $category['summary']['total']++;
-                
+
                 if ($normalizedReq['condition']) {
                     $category['summary']['passed']++;
                     $this->result['summary']['passed']++;
@@ -113,7 +113,7 @@ final class Checker
                         $this->result['summary']['warnings']++;
                     }
                 }
-                
+
                 $this->result['summary']['total']++;
             }
 
@@ -129,10 +129,10 @@ final class Checker
     private function processRequirement(&$requirement)
     {
         // No need for eval processing anymore - all conditions are direct boolean values
-        
-        $requirement['status'] = $requirement['condition'] ? 'passed' : 
+
+        $requirement['status'] = $requirement['condition'] ? 'passed' :
             ($requirement['mandatory'] ? 'failed' : 'warning');
-        
+
         // Add performance metrics for certain checks
         if (isset($requirement['performance_test'])) {
             $requirement['metrics'] = $this->runPerformanceTest($requirement['performance_test']);
@@ -206,7 +206,7 @@ final class Checker
             $metrics['jit_buffer_size'] = ini_get('opcache.jit_buffer_size');
             $metrics['jit_hot_loop'] = ini_get('opcache.jit_hot_loop');
             $metrics['jit_hot_func'] = ini_get('opcache.jit_hot_func');
-            
+
             // JIT statistics if available
             if (isset($status['jit'])) {
                 $metrics['jit_buffer_used'] = round($status['jit']['buffer_size'] / 1024 / 1024, 2) . ' MB';
@@ -238,7 +238,7 @@ final class Checker
     {
         $extensions = get_loaded_extensions();
         $core = ['Core', 'date', 'libxml', 'pcre', 'unicode', 'filter', 'SPL', 'session', 'standard'];
-        
+
         return [
             'total' => count($extensions),
             'core' => count(array_intersect($extensions, $core)),
@@ -367,11 +367,11 @@ final class Checker
                 ],
                 [
                     'name' => 'Composer Available',
-                    'condition' => 'eval:$this->checkCommandExists("composer")',
+                    'condition' => $this->checkCommandExists('composer'),
                     'mandatory' => false,
                     'description' => 'Composer dependency manager',
                     'recommendation' => 'Install Composer for dependency management'
-                ]
+                ],
             ];
         }
 
@@ -488,8 +488,8 @@ final class Checker
     {
         // In PHP 8.0+, OPcache is part of core but still shows as extension
         // Check multiple ways to ensure detection
-        return extension_loaded('opcache') || 
-               extension_loaded('Zend OPcache') || 
+        return extension_loaded('opcache') ||
+               extension_loaded('Zend OPcache') ||
                function_exists('opcache_get_status') ||
                function_exists('opcache_get_configuration');
     }
@@ -502,7 +502,7 @@ final class Checker
         if (!$this->checkOpcacheLoaded()) {
             return false;
         }
-        
+
         $enabled = ini_get('opcache.enable');
         return $enabled === '1' || $enabled === 1 || $enabled === true;
     }
@@ -515,7 +515,7 @@ final class Checker
         if (!$this->checkOpcacheLoaded()) {
             return false;
         }
-        
+
         $enabled = ini_get('opcache.enable_cli');
         return $enabled === '1' || $enabled === 1 || $enabled === true;
     }
@@ -528,7 +528,7 @@ final class Checker
         if (!$this->checkOpcacheLoaded()) {
             return false;
         }
-        
+
         $jitSetting = ini_get('opcache.jit');
         return $jitSetting && $jitSetting !== '0' && $jitSetting !== 'disable' && $jitSetting !== 'off';
     }
@@ -542,7 +542,7 @@ final class Checker
         if ($memoryLimit === '-1') {
             return true; // Unlimited
         }
-        
+
         return $this->compareByteSize($memoryLimit, $minimumLimit, '>=');
     }
 
@@ -551,9 +551,12 @@ final class Checker
      */
     public function checkCommandExists($command)
     {
-        $whereIsCommand = (PHP_OS_FAMILY === 'Windows') ? 'where' : 'which';
-        exec("$whereIsCommand $command", $output, $returnCode);
-        return $returnCode === 0;
+        $locator = (PHP_OS_FAMILY === 'Windows') ? 'where' : 'command -v';
+        $arg = escapeshellarg($command);
+        $code = 1;
+        exec("$locator $arg > /dev/null 2>&1", $void, $code);
+
+        return $code === 0;
     }
 
     /**
@@ -563,7 +566,7 @@ final class Checker
     {
         $bytesA = $this->getByteSize($a);
         $bytesB = $this->getByteSize($b);
-        
+
         switch ($operator) {
             case '>=':
                 return $bytesA >= $bytesB;
@@ -588,7 +591,7 @@ final class Checker
         $size = trim($size);
         $last = strtolower($size[strlen($size)-1]);
         $size = (int) $size;
-        
+
         switch($last) {
             case 'g':
                 $size *= 1024;
@@ -597,16 +600,8 @@ final class Checker
             case 'k':
                 $size *= 1024;
         }
-        
-        return $size;
-    }
 
-    /**
-     * Evaluate PHP expression
-     */
-    private function evaluateExpression($expression)
-    {
-        return eval("return $expression;");
+        return $size;
     }
 
     /**
@@ -625,7 +620,7 @@ final class Checker
         if (!$this->result) {
             $this->check();
         }
-        
+
         $result = $this->result;
         include __DIR__ . '/template.php';
     }
@@ -638,7 +633,7 @@ final class Checker
         if (!$this->result) {
             $this->check();
         }
-        
+
         return json_encode($this->result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 }
