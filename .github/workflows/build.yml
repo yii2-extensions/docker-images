@@ -1,0 +1,73 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/yii2-extensions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout.
+      uses: actions/checkout@v5
+
+    - name: Setup Docker Buildx.
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry.
+      if: github.event_name == 'push'  # Solo en push, no en PR
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Prepare tags.
+      id: tags
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # Para PR: usar número del PR
+          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Para main: usar 'latest' y el SHA corto
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        else
+          # Para otras ramas: usar nombre de la rama
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH_NAME}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build and Push.
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.apache
+        push: ${{ github.event_name == 'push' }}
+        tags: ${{ steps.tags.outputs.TAG }}
+        build-args: |
+          PHP_VERSION=8.4
+          BUILD_TYPE=dev
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Show result.
+      run: |
+        echo "🎉 Build completed!"
+        echo "Event: ${{ github.event_name }}"
+        echo "Tags: ${{ steps.tags.outputs.TAG }}"
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          echo "✅ Image pushed to registry"
+        else
+          echo "ℹ️ Image built but not pushed (PR mode)"
+        fi
