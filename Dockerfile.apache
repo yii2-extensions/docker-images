@@ -272,9 +272,8 @@ COPY docker/configs/apache/vhost.conf /etc/apache2/sites-available/yii2.conf
 COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
 COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
 
-# Copy entrypoint script and requirements checker to temp location
+# Copy entrypoint script
 COPY docker/scripts/entrypoint.sh /usr/local/bin/entrypoint
-COPY docker/requirements /opt/requirements-template
 RUN chmod +x /usr/local/bin/entrypoint
 
 # Enable the site

@@ -21,14 +21,26 @@ wait_for_service() {
 
     echo -e "${YELLOW}Waiting for ${service}...${NC}"
 
-    while ! nc -z "$host" "$port" 2>/dev/null; do
+    if command -v nc >/dev/null 2>&1; then
+      while ! nc -z -w 2 "$host" "$port" 2>/dev/null; do
         try=$((try + 1))
         if [ $try -gt $max_tries ]; then
-            echo -e "${RED}${service} failed to start${NC}"
+            echo -e "${RED}${service} failed to start at ${host}:${port}${NC}"
             return 1
         fi
         sleep 2
-    done
+      done
+    else
+      # Fallback using bash's /dev/tcp
+      while ! (exec 3<>"/dev/tcp/${host}/${port}") 2>/dev/null; do
+        try=$((try + 1))
+        if [ $try -gt $max_tries ]; then
+            echo -e "${RED}${service} failed to start at ${host}:${port}${NC}"
+            return 1
+        fi
+        sleep 2
+      done
+    fi
 
     echo -e "${GREEN}${service} is ready${NC}"
     return 0
@@ -74,8 +86,13 @@ fi
 
 # Update PHP memory limit if provided
 if [ -n "$PHP_MEMORY_LIMIT" ]; then
-    sed -i "s/memory_limit.*/memory_limit = ${PHP_MEMORY_LIMIT}/g" /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
-    sed -i "s/memory_limit.*/memory_limit = ${PHP_MEMORY_LIMIT}/g" /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
+    for sapi in apache2 cli; do
+      ini="/etc/php/${PHP_VERSION}/${sapi}/conf.d/99-yii2.ini"
+      [ -f "$ini" ] || echo "; yii2 overrides" > "$ini"
+      grep -q '^memory_limit' "$ini" && \
+        sed -i "s|^memory_limit.*|memory_limit = ${PHP_MEMORY_LIMIT}|" "$ini" || \
+        echo "memory_limit = ${PHP_MEMORY_LIMIT}" >> "$ini"
+    done
 fi
 
 # Create necessary directories
@@ -91,6 +108,18 @@ if [ ! -d "/var/www/app/web/requirements" ] && [ -d "/opt/requirements-template"
 fi
 
 # Install composer dependencies if composer.json exists and vendor doesn't
+export COMPOSER_HOME=/var/www/.composer
+mkdir -p "$COMPOSER_HOME"
+chown -R www-data:www-data "$COMPOSER_HOME"
+
+run_as_www_data() {
+    if command -v runuser >/dev/null 2>&1; then
+    runuser -u www-data -- "$@"
+    else
+    su -s /bin/sh -c "$*" www-data
+    fi
+}
+
 if [ -f "/var/www/app/composer.json" ] && [ ! -d "/var/www/app/vendor" ]; then
     echo -e "${YELLOW}Installing Composer dependencies...${NC}"
     cd /var/www/app
@@ -100,7 +129,7 @@ if [ -f "/var/www/app/composer.json" ] && [ ! -d "/var/www/app/vendor" ]; then
 
     if [ "$YII_ENV" = "prod" ] || [ "$BUILD_TYPE" = "prod" ]; then
         echo -e "${YELLOW}Installing production dependencies (--no-dev)${NC}"
-        sudo -u www-data composer install \
+        run_as_www_data composer install \
             --no-dev \
             --no-interaction \
             --no-progress \
@@ -108,7 +137,7 @@ if [ -f "/var/www/app/composer.json" ] && [ ! -d "/var/www/app/vendor" ]; then
             --optimize-autoloader
     else
         echo -e "${YELLOW}Installing all dependencies${NC}"
-        sudo -u www-data composer install \
+        run_as_www_data composer install \
             --no-interaction \
             --no-progress \
             --optimize-autoloader
@@ -150,11 +179,13 @@ if [ "$BUILD_TYPE" = "full" ] || [ "$YII_ENV" = "test" ]; then
     fi
 fi
 
-# Run database migrations if yii console is available
-if [ -f "/var/www/app/yii" ] && [ "$YII_ENV" != "test" ]; then
+# Run database migrations if enabled
+if [ -f "/var/www/app/yii" ] && [ "$YII_ENV" != "test" ] && [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     echo -e "${YELLOW}Running database migrations...${NC}"
     cd /var/www/app
-    sudo -u www-data php yii migrate --interactive=0 2>/dev/null || true
+    run_as_www_data php yii migrate --interactive=0 || {
+      echo -e "${RED}Migrations failed${NC}"; exit 1;
+    }
 fi
 
 # Create health check endpoint
