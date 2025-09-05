@@ -23,10 +23,10 @@ class ComponentHelper
             'NoSQL & Caching' => 'hdd-stack',
             'Image Processing' => 'image'
         ];
-        
+
         return $icons[$categoryName] ?? 'gear';
     }
-    
+
     /**
      * Get status class for requirement
      */
@@ -34,12 +34,12 @@ class ComponentHelper
     {
         return match($status) {
             'passed' => 'success',
-            'warning' => 'warning', 
+            'warning' => 'warning',
             'failed' => 'danger',
             default => 'secondary'
         };
     }
-    
+
     /**
      * Get status icon for requirement
      */
@@ -52,7 +52,7 @@ class ComponentHelper
             default => 'question-circle'
         };
     }
-    
+
     /**
      * Get overall system status
      */
@@ -66,7 +66,7 @@ class ComponentHelper
         }
         return 'success';
     }
-    
+
     /**
      * Get status message
      */
@@ -76,18 +76,18 @@ class ComponentHelper
         $passed = $summary['passed'];
         $warnings = $summary['warnings'];
         $failed = $summary['failed'];
-        
+
         if ($failed > 0) {
             return "System has {$failed} critical " . ($failed === 1 ? 'issue' : 'issues') . " that must be addressed";
         }
-        
+
         if ($warnings > 0) {
             return "System meets minimum requirements but has {$warnings} optional " . ($warnings === 1 ? 'improvement' : 'improvements') . " available";
         }
-        
+
         return "System meets all requirements ({$passed}/{$total} checks passed)";
     }
-    
+
     /**
      * Generate badge HTML
      */
@@ -96,7 +96,7 @@ class ComponentHelper
         $escapedText = ViewRenderer::escape($text);
         return "<span class='badge bg-{$type} {$class}'>{$escapedText}</span>";
     }
-    
+
     /**
      * Generate progress bar HTML
      */
@@ -104,34 +104,36 @@ class ComponentHelper
     {
         $percentage = max(0, min(100, $percentage));
         $stripedClass = $striped ? 'progress-bar-striped' : '';
-        
+
         return "
         <div class='progress'>
-            <div class='progress-bar bg-{$type} {$stripedClass}' 
-                 role='progressbar' 
-                 style='width: {$percentage}%' 
-                 aria-valuenow='{$percentage}' 
-                 aria-valuemin='0' 
+            <div class='progress-bar bg-{$type} {$stripedClass}'
+                 role='progressbar'
+                 style='width: {$percentage}%'
+                 aria-valuenow='{$percentage}'
+                 aria-valuemin='0'
                  aria-valuemax='100'>
                 {$percentage}%
             </div>
         </div>";
     }
-    
+
     /**
      * Format file size
      */
     public static function formatBytes(int $bytes, int $precision = 2): string
     {
+        $bytes = max(0, $bytes);
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        $i = 0;
+
+        for (; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
-        
+
         return round($bytes, $precision) . ' ' . $units[$i];
     }
-    
+
     /**
      * Format uptime
      */
@@ -140,12 +142,12 @@ class ComponentHelper
         $days = intval($seconds / 86400);
         $hours = intval(($seconds % 86400) / 3600);
         $minutes = intval(($seconds % 3600) / 60);
-        
+
         $parts = [];
         if ($days > 0) $parts[] = $days . 'd';
         if ($hours > 0) $parts[] = $hours . 'h';
         if ($minutes > 0) $parts[] = $minutes . 'm';
-        
+
         return empty($parts) ? '0m' : implode(' ', $parts);
     }
 }

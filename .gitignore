@@ -12,10 +12,10 @@
 .idea
 
 # phpunit
-phpunit.phar
-.phpunit.result.cache
 .phpunit.cache
-phpunit.xlm
+.phpunit.result.cache
+phpunit.phar
+phpunit.xml
 
 #yii3 config packages
 /config/packages

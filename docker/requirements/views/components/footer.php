@@ -18,26 +18,26 @@
                         </div>
                     </div>
                     <p class="text-muted mb-3">
-                        A comprehensive system validation tool for Yii2 applications, 
+                        A comprehensive system validation tool for Yii2 applications,
                         built with modern web technologies and designed for developer productivity.
                     </p>
                     <div class="footer-links">
-                        <a href="https://www.yiiframework.com/" target="_blank" class="text-decoration-none me-3">
+                        <a href="https://www.yiiframework.com/" target="_blank" rel="noopener noreferrer" class="text-decoration-none me-3">
                             <i class="bi bi-globe"></i>
                             Official Website
                         </a>
-                        <a href="https://github.com/yiisoft/yii2" target="_blank" class="text-decoration-none me-3">
+                        <a href="https://github.com/yiisoft/yii2" target="_blank" rel="noopener noreferrer" class="text-decoration-none me-3">
                             <i class="bi bi-github"></i>
                             GitHub
                         </a>
-                        <a href="https://www.yiiframework.com/doc/guide/2.0/en" target="_blank" class="text-decoration-none">
+                        <a href="https://www.yiiframework.com/doc/guide/2.0/en" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
                             <i class="bi bi-book"></i>
                             Documentation
                         </a>
                     </div>
                 </div>
             </div>
-            
+
             <!-- System Status -->
             <div class="col-lg-4">
                 <h6 class="mb-3">System Status</h6>
@@ -90,7 +90,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Actions & Tools -->
             <div class="col-lg-4">
                 <h6 class="mb-3">Actions & Tools</h6>
@@ -112,7 +112,7 @@
                             </a>
                         </div>
                     </div>
-                    
+
                     <div class="action-group">
                         <h6 class="action-title">System Actions</h6>
                         <div class="btn-group-vertical w-100">
@@ -133,7 +133,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Footer Bottom -->
         <div class="row mt-4 pt-4 border-top">
             <div class="col-md-6">
@@ -183,13 +183,13 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Copyright -->
         <div class="row mt-3 pt-3 border-top">
             <div class="col-12 text-center">
                 <small class="text-muted">
-                    © <?php echo date('Y'); ?> Yii Software LLC. 
-                    Requirements Checker v2.0 - 
+                    © <?php echo date('Y'); ?> Yii Software LLC.
+                    Requirements Checker v2.0 -
                     <a href="https://github.com/yiisoft/yii2/blob/master/LICENSE.md" target="_blank" class="text-decoration-none">
                         BSD License
                     </a>
@@ -239,7 +239,7 @@ function clearCache() {
         // Clear localStorage
         localStorage.removeItem('theme');
         localStorage.removeItem('viewMode');
-        
+
         // Force refresh with cache bypass
         window.location.reload(true);
     }
@@ -256,7 +256,7 @@ const footer = document.querySelector('.requirements-footer');
 
 window.addEventListener('scroll', function() {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    
+
     if (scrollTop > lastScrollTop && scrollTop > 200) {
         // Scrolling down
         footer.style.transform = 'translateY(20px)';
@@ -266,7 +266,7 @@ window.addEventListener('scroll', function() {
         footer.style.transform = 'translateY(0)';
         footer.style.opacity = '1';
     }
-    
+
     lastScrollTop = scrollTop;
 });
 </script>
