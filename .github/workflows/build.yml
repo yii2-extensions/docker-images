@@ -25,6 +25,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         build_type: [dev, full, prod]
 
@@ -46,7 +47,7 @@ jobs:
     - name: Prepare tags.
       id: tags
       run: |
-        BASE_NAME="${{ env.REGISTRY }}/yii2-extensions/apache"
+        BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
         PHP_VERSION="8.4"
         BUILD_TYPE="${{ matrix.build_type }}"
 
@@ -73,8 +74,8 @@ jobs:
         build-args: |
           PHP_VERSION=8.4
           BUILD_TYPE=${{ matrix.build_type }}
-        cache-from: type=gha,scope=${{ matrix.build_type }}
-        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
+        cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.build_type }}
+        cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.build_type }}
 
     - name: Show result.
       run: |
