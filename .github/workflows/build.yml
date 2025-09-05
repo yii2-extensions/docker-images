@@ -48,8 +48,10 @@ jobs:
       id: tags
       run: |
         BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
-        PHP_VERSION="8.4"
         BUILD_TYPE="${{ matrix.build_type }}"
+        PHP_VERSION="8.4"
+        echo "BASE_NAME=${BASE_NAME}" >> "$GITHUB_OUTPUT"
+        echo "PHP_VERSION=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
 
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           # For PRs: use PR number
@@ -64,7 +66,21 @@ jobs:
           echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
         fi
 
-    - name: Build and Push.
+    - name: Build Only (PRs from Forks).
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.apache
+        push: false
+        tags: ${{ steps.tags.outputs.TAG }}
+        build-args: |
+          BUILD_TYPE=${{ matrix.build_type }}
+          PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
+        cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.build_type }}
+
+    - name: Build and Push
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -72,8 +88,8 @@ jobs:
         push: ${{ github.event_name == 'push' }}
         tags: ${{ steps.tags.outputs.TAG }}
         build-args: |
-          PHP_VERSION=8.4
           BUILD_TYPE=${{ matrix.build_type }}
+          PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
         cache-from: type=gha,scope=${{ github.ref_name }}-${{ matrix.build_type }}
         cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.build_type }}
 
