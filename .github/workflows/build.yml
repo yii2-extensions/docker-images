@@ -24,6 +24,10 @@ jobs:
       contents: read
       packages: write
 
+    strategy:
+      matrix:
+        build_type: [dev, full, prod]
+
     steps:
     - name: Checkout.
       uses: actions/checkout@v5
@@ -42,17 +46,21 @@ jobs:
     - name: Prepare tags.
       id: tags
       run: |
+        BASE_NAME="${{ env.REGISTRY }}/yii2-extensions/apache"
+        PHP_VERSION="8.4"
+        BUILD_TYPE="${{ matrix.build_type }}"
+
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           # For PRs: use PR number
-          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
         elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          # For main: latest + short SHA
+          # For main: stable tags + short SHA
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE},${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
         else
           # Other branches: use branch name
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          echo "TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
         fi
 
     - name: Build and Push.
@@ -64,13 +72,13 @@ jobs:
         tags: ${{ steps.tags.outputs.TAG }}
         build-args: |
           PHP_VERSION=8.4
-          BUILD_TYPE=dev
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+          BUILD_TYPE=${{ matrix.build_type }}
+        cache-from: type=gha,scope=${{ matrix.build_type }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
 
     - name: Show result.
       run: |
-        echo "🎉 Build completed!"
+        echo "🎉 Build completed for ${{ matrix.build_type }}!"
         echo "Event: ${{ github.event_name }}"
         echo "Tags: ${{ steps.tags.outputs.TAG }}"
         if [[ "${{ github.event_name }}" == "push" ]]; then
