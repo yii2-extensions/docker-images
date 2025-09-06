@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # Default values
 PHP_VERSION=${PHP_VERSION:-8.4}
 BUILD_TYPE=${1:-dev}
-DOCKERFILE=${DOCKERFILE:-./src/flavor/Dockerfile.apache}
+DOCKERFILE=${DOCKERFILE:-./src/flavor/apache/Dockerfile.apache}
 
 # Function to print colored output
 print_info() {

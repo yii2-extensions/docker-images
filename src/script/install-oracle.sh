@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Oracle Instant Client Installation Script for Debian Trixie
 # Version: 21.x (Latest LTS)

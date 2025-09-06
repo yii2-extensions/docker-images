@@ -71,7 +71,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./src/flavor/Dockerfile.apache
+        file: ./src/flavor/apache/Dockerfile.apache
         push: false
         tags: ${{ steps.tags.outputs.TAG }}
         build-args: |
@@ -86,7 +86,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./src/flavor/Dockerfile.apache
+        file: ./src/flavor/apache/Dockerfile.apache
         push: ${{ github.event_name == 'push' }}
         tags: ${{ steps.tags.outputs.TAG }}
         build-args: |
