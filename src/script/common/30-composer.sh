@@ -30,9 +30,13 @@ composer_install() {
     fi
 
     [[ "${COMPOSER_NO_SCRIPTS:-false}" == "true" ]] && cmd+=(--no-scripts)
-    [[ -n "${COMPOSER_EXTRA_FLAGS:-}" ]] && cmd+=(${COMPOSER_EXTRA_FLAGS})
+    if [[ -n "${COMPOSER_EXTRA_FLAGS:-}" ]]; then
+        # shellcheck disable=SC2206
+        read -r -a extras <<< "${COMPOSER_EXTRA_FLAGS}"
+        cmd+=("${extras[@]}")
+    fi
 
-    if gosu www-data $cmd; then
+    if gosu www-data "${cmd[@]}"; then
         log SUCCESS "Composer dependencies installed"
         [[ -f "yii" ]] && chmod +x yii
     else

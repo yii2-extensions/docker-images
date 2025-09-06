@@ -106,13 +106,13 @@ wait_for_databases() {
 
     local should_wait=false
     [[ "${WAIT_FOR_SERVICES:-false}" == "true" ]] && should_wait=true
-    [[ "${BUILD_TYPE}" == "full" ]] && should_wait=true
-    [[ "${YII_ENV}" == "test" ]] && should_wait=true
+    [[ "${BUILD_TYPE:-}" == "full" ]] && should_wait=true
+    [[ "${YII_ENV:-}" == "test" ]] && should_wait=true
 
     [[ "$should_wait" == "false" ]] && return
 
-    [[ -n "${DB_MYSQL_HOST}" ]] && wait_for_service "${DB_MYSQL_HOST}" "${DB_MYSQL_PORT:-3306}" "MySQL"
-    [[ -n "${DB_PGSQL_HOST}" ]] && wait_for_service "${DB_PGSQL_HOST}" "${DB_PGSQL_PORT:-5432}" "PostgreSQL"
+    [[ -n "${DB_MYSQL_HOST:-}" ]] && wait_for_service "${DB_MYSQL_HOST}" "${DB_MYSQL_PORT:-3306}" "MySQL"
+    [[ -n "${DB_PGSQL_HOST:-}" ]] && wait_for_service "${DB_PGSQL_HOST}" "${DB_PGSQL_PORT:-5432}" "PostgreSQL"
     [[ -n "${DB_REDIS_HOST:-}" ]] && wait_for_service "${DB_REDIS_HOST}" "${DB_REDIS_PORT:-6379}" "Redis"
     [[ -n "${DB_MONGODB_HOST:-}" ]] && wait_for_service "${DB_MONGODB_HOST}" "${DB_MONGODB_PORT:-27017}" "MongoDB"
 }

@@ -39,6 +39,10 @@ php_configure() {
         local ini_dir="/etc/php/${php_version}/${sapi}/conf.d"
         mkdir -p "$ini_dir"
         local ini="${ini_dir}/99-docker.ini"
+        {
+            echo "; Docker PHP Configuration - Generated at $(date '+%Y-%m-%d %H:%M:%S')"
+            echo
+        } > "$ini"
 
         for setting in "${PHP_SETTINGS[@]}"; do
             IFS=':' read -r key env_var <<< "$setting"

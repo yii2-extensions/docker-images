@@ -18,22 +18,34 @@ update_config() {
 
     case $format in
         apache)
-            if grep -Eq "^[[:space:]]*${key}([[:space:]]|$)" "$file" 2>/dev/null; then
-                sed -i -E "s|^[[:space:]]*${key}([[:space:]]|$).*|${key} ${value}|" "$file"
+            local key_re
+            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
+            local repl
+            repl="$(printf '%s %s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
+            if grep -Eq "^[[:space:]]*${key_re}([[:space:]]|$)" "$file" 2>/dev/null; then
+                sed -i -E "s|^[[:space:]]*${key_re}([[:space:]]|$).*|${repl}|" "$file"
             else
                 echo "${key} ${value}" >> "$file"
             fi
             ;;
         ini)
-            if grep -Eq "^${key}[[:space:]]*=" "$file" 2>/dev/null; then
-                sed -i -E "s|^${key}[[:space:]]*=.*|${key} = ${value}|" "$file"
+            local key_re
+            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
+            local repl
+            repl="$(printf '%s = %s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
+            if grep -Eq "^${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
+                sed -i -E "s|^${key_re}[[:space:]]*=.*|${repl}|" "$file"
             else
                 echo "${key} = ${value}" >> "$file"
             fi
             ;;
         env)
-            if grep -q "^${key}=" "$file" 2>/dev/null; then
-                sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+            local key_re
+            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
+            local repl
+            repl="$(printf '%s=%s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
+            if grep -Eq "^${key_re}=" "$file" 2>/dev/null; then
+                sed -i -E "s|^${key_re}=.*|${repl}|" "$file"
             else
                 echo "${key}=${value}" >> "$file"
             fi
