@@ -23,14 +23,14 @@ composer_install() {
     log INFO "Installing Composer dependencies..."
     cd /var/www/app
 
-    local cmd="composer install --no-interaction --no-progress --optimize-autoloader"
+    local -a cmd=(composer install --no-interaction --no-progress --optimize-autoloader)
 
-    if [[ "${YII_ENV}" == "prod" ]] || [[ "${BUILD_TYPE}" == "prod" ]]; then
-        cmd="$cmd --no-dev --classmap-authoritative"
+    if [[ "${YII_ENV:-}" == "prod" || "${BUILD_TYPE:-}" == "prod" ]]; then
+        cmd+=(--no-dev --classmap-authoritative)
     fi
 
-    [[ "${COMPOSER_NO_SCRIPTS:-false}" == "true" ]] && cmd="$cmd --no-scripts"
-    [[ -n "${COMPOSER_EXTRA_FLAGS}" ]] && cmd="$cmd ${COMPOSER_EXTRA_FLAGS}"
+    [[ "${COMPOSER_NO_SCRIPTS:-false}" == "true" ]] && cmd+=(--no-scripts)
+    [[ -n "${COMPOSER_EXTRA_FLAGS:-}" ]] && cmd+=(${COMPOSER_EXTRA_FLAGS})
 
     if gosu www-data $cmd; then
         log SUCCESS "Composer dependencies installed"

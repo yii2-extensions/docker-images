@@ -21,7 +21,7 @@ health_create_endpoint() {
 
     # Check if we can write to the target location
     if ! mkdir -p "$(dirname "$health_file")" 2>/dev/null; then
-        log WARN "Cannot create health endpoint directory - filesystem may be read-only"
+        log WARNING "Cannot create health endpoint directory - filesystem may be read-only"
         return 0
     fi
 

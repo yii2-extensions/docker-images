@@ -7,7 +7,7 @@ set -euo pipefail
 yii_run_migrations() {
     [[ "${YII_RUN_MIGRATIONS:-false}" != "true" ]] && return
     [[ ! -f "/var/www/app/yii" ]] && { log WARNING "Yii console not found"; return; }
-    [[ "${YII_ENV}" == "test" ]] && { log INFO "Test environment, skipping migrations"; return; }
+    [[ "${YII_ENV:-}" == "test" ]] && { log INFO "Test environment, skipping migrations"; return; }
 
     log INFO "Running database migrations..."
     cd /var/www/app

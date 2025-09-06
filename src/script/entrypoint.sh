@@ -55,10 +55,10 @@ configure_service_fallback() {
 
         local apache_conf="/etc/apache2/apache2.conf"
         if [[ -w "$apache_conf" ]]; then
-            [[ -n "${APACHE_KEEP_ALIVE_TIMEOUT}" ]] && update_config "KeepAliveTimeout" "${APACHE_KEEP_ALIVE_TIMEOUT}" "$apache_conf" "apache"
-            [[ -n "${APACHE_KEEP_ALIVE}" ]] && update_config "KeepAlive" "${APACHE_KEEP_ALIVE}" "$apache_conf" "apache"
-            [[ -n "${APACHE_LOG_LEVEL}" ]] && update_config "LogLevel" "${APACHE_LOG_LEVEL}" "$apache_conf" "apache"
-            [[ -n "${APACHE_SERVER_NAME}" ]] && update_config "ServerName" "${APACHE_SERVER_NAME:-localhost}" "$apache_conf" "apache"
+            [[ -n "${APACHE_KEEP_ALIVE_TIMEOUT:-}" ]] && update_config "KeepAliveTimeout" "${APACHE_KEEP_ALIVE_TIMEOUT}" "$apache_conf" "apache"
+            [[ -n "${APACHE_KEEP_ALIVE:-}" ]] && update_config "KeepAlive" "${APACHE_KEEP_ALIVE}" "$apache_conf" "apache"
+            [[ -n "${APACHE_LOG_LEVEL:-}" ]] && update_config "LogLevel" "${APACHE_LOG_LEVEL}" "$apache_conf" "apache"
+            [[ -n "${APACHE_SERVER_NAME:-}" ]] && update_config "ServerName" "${APACHE_SERVER_NAME:-localhost}" "$apache_conf" "apache"
             log SUCCESS "Apache configuration updated (fallback)"
         else
             log WARNING "Cannot modify Apache config - insufficient permissions"

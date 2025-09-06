@@ -7,7 +7,8 @@ set -euo pipefail
 php_configure() {
     log INFO "Configuring PHP..."
 
-    local php_config_dir="/etc/php/${PHP_VERSION}"
+    local php_version="${PHP_VERSION:-$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')}"
+    local php_config_dir="/etc/php/${php_version}"
     if [[ ! -w "$php_config_dir" ]]; then
         log WARNING "Cannot modify PHP config - insufficient permissions"
         return 0
@@ -22,7 +23,6 @@ php_configure() {
         "log_errors:PHP_LOG_ERRORS"
         "max_execution_time:PHP_MAX_EXECUTION_TIME"
         "max_file_uploads:PHP_MAX_FILE_UPLOADS"
-        "max_input_nesting_level:PHP_MAX_INPUT_NESTING_LEVEL"
         "max_input_time:PHP_MAX_INPUT_TIME"
         "max_input_vars:PHP_MAX_INPUT_VARS"
         "memory_limit:PHP_MEMORY_LIMIT"
@@ -36,9 +36,9 @@ php_configure() {
     )
 
     for sapi in apache2 cli; do
-        local ini="/etc/php/${PHP_VERSION}/${sapi}/conf.d/99-docker.ini"
-        echo "; Docker PHP Configuration - Generated at $(date)" > "$ini"
-        echo "" >> "$ini"
+        local ini_dir="/etc/php/${php_version}/${sapi}/conf.d"
+        mkdir -p "$ini_dir"
+        local ini="${ini_dir}/99-docker.ini"
 
         for setting in "${PHP_SETTINGS[@]}"; do
             IFS=':' read -r key env_var <<< "$setting"
@@ -51,12 +51,16 @@ php_configure() {
 
     # Redis session configuration
     if [[ "${PHP_REDIS_SESSION:-false}" == "true" ]]; then
-        for sapi in apache2 cli; do
-            local ini="/etc/php/${PHP_VERSION}/${sapi}/conf.d/99-docker.ini"
-            echo "session.save_handler = redis" >> "$ini"
-            echo "session.save_path = tcp://${DB_REDIS_HOST:-redis}:${DB_REDIS_PORT:-6379}" >> "$ini"
-        done
-        log SUCCESS "Redis session handler configured"
+        if php -r 'exit((int)!extension_loaded("redis"));'; then
+            for sapi in apache2 cli; do
+                local ini="/etc/php/${php_version}/${sapi}/conf.d/99-docker.ini"
+                echo "session.save_handler = redis" >> "$ini"
+                echo "session.save_path = tcp://${DB_REDIS_HOST:-redis}:${DB_REDIS_PORT:-6379}" >> "$ini"
+            done
+            log SUCCESS "Redis session handler configured"
+        else
+            log WARNING "PHP_REDIS_SESSION=true but redis extension not loaded; skipping session handler setup"
+        fi
     fi
 
     log SUCCESS "PHP configuration applied"

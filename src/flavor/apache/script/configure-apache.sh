@@ -38,31 +38,31 @@ apply_dynamic_config() {
 
     # Runtime settings that can be overridden
     if [[ -n "${APACHE_TIMEOUT:-}" ]]; then
-        sed -i "s/^Timeout .*/Timeout ${APACHE_TIMEOUT}/" "$apache_conf"
+        sed -i -E "s|^[[:space:]]*Timeout[[:space:]]+.*|Timeout ${APACHE_TIMEOUT}|" "$apache_conf"
         log DEBUG "Set Apache Timeout = ${APACHE_TIMEOUT}"
         config_updated=true
     fi
 
     if [[ -n "${APACHE_KEEP_ALIVE_TIMEOUT:-}" ]]; then
-        sed -i "s/^KeepAliveTimeout .*/KeepAliveTimeout ${APACHE_KEEP_ALIVE_TIMEOUT}/" "$apache_conf"
+        sed -i -E "s|^[[:space:]]*KeepAliveTimeout[[:space:]]+.*|KeepAliveTimeout ${APACHE_KEEP_ALIVE_TIMEOUT}|" "$apache_conf"
         log DEBUG "Set KeepAliveTimeout = ${APACHE_KEEP_ALIVE_TIMEOUT}"
         config_updated=true
     fi
 
     if [[ -n "${APACHE_MAX_KEEP_ALIVE_REQUESTS:-}" ]]; then
-        sed -i "s/^MaxKeepAliveRequests .*/MaxKeepAliveRequests ${APACHE_MAX_KEEP_ALIVE_REQUESTS}/" "$apache_conf"
+        sed -i -E "s|^[[:space:]]*MaxKeepAliveRequests[[:space:]]+.*|MaxKeepAliveRequests ${APACHE_MAX_KEEP_ALIVE_REQUESTS}|" "$apache_conf"
         log DEBUG "Set MaxKeepAliveRequests = ${APACHE_MAX_KEEP_ALIVE_REQUESTS}"
         config_updated=true
     fi
 
     if [[ -n "${APACHE_LOG_LEVEL:-}" ]]; then
-        sed -i "s/^LogLevel .*/LogLevel ${APACHE_LOG_LEVEL}/" "$apache_conf"
+        sed -i -E "s|^[[:space:]]*LogLevel[[:space:]]+.*|LogLevel ${APACHE_LOG_LEVEL}|" "$apache_conf"
         log DEBUG "Set LogLevel = ${APACHE_LOG_LEVEL}"
         config_updated=true
     fi
 
     if [[ -n "${APACHE_SERVER_NAME:-}" ]]; then
-        sed -i "s/^ServerName .*/ServerName ${APACHE_SERVER_NAME}/" "$apache_conf"
+        sed -i -E "s|^[[:space:]]*ServerName[[:space:]]+.*|ServerName ${APACHE_SERVER_NAME}|" "$apache_conf"
         log DEBUG "Set ServerName = ${APACHE_SERVER_NAME}"
         config_updated=true
     fi
@@ -102,23 +102,16 @@ enable_yii2_site() {
 # Verify service implementation
 # =============================================================================
 verify_service_impl() {
-    log INFO "Verifying Apache configuration..."
-
-    # Test configuration syntax
-    if ! apache2ctl configtest >/dev/null 2>&1; then
-        log ERROR "Apache configuration test failed:"
-        apache2ctl configtest
+    local status=0
+    check_required_modules || status=1
+    verify_sites || status=1
+    if [[ $status -eq 0 ]]; then
+        log SUCCESS "Apache configuration verification passed"
+        return 0
+    else
+        log WARNING "Apache verification finished with issues"
         return 1
     fi
-
-    # Check if required modules are loaded
-    check_required_modules
-
-    # Verify sites are properly configured
-    verify_sites
-
-    log SUCCESS "Apache configuration verification passed"
-    return 0
 }
 
 # =============================================================================

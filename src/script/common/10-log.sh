@@ -10,9 +10,9 @@ log() {
     local message="$@"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    case $level in
+    case "$level" in
         ERROR)   echo -e "${RED}[${timestamp}]${NC} ${RED}ERROR:${NC} $message" >&2 ;;
-        WARNING) echo -e "${YELLOW}[${timestamp}]${NC} ${YELLOW}WARN:${NC} $message" >&2 ;;
+        WARNING|WARN) echo -e "${YELLOW}[${timestamp}]${NC} ${YELLOW}WARN:${NC} $message" >&2 ;;
         SUCCESS) echo -e "${GREEN}[${timestamp}]${NC} ${GREEN}OK:${NC} $message" >&2 ;;
         INFO)    echo -e "${BLUE}[${timestamp}]${NC} ${CYAN}INFO:${NC} $message" >&2 ;;
         DEBUG)

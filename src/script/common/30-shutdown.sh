@@ -6,12 +6,12 @@ set -euo pipefail
 # =============================================================================
 shutdown_handler() {
     log INFO "Received shutdown signal, gracefully stopping service..."
-    if [[ -n "${SERVICE_PID}" ]]; then
-        kill -TERM "${SERVICE_PID}" 2>/dev/null || true
-        wait "${SERVICE_PID}" 2>/dev/null || true
+    if [[ -n "${SERVICE_PID:-}" ]]; then
+        if kill -0 "${SERVICE_PID}" 2>/dev/null; then
+            kill -TERM "${SERVICE_PID}" 2>/dev/null || true
+            wait "${SERVICE_PID}" 2>/dev/null || true
+        fi
     fi
-    log SUCCESS "Service stopped gracefully"
-    exit 0
 }
 
 trap shutdown_handler SIGTERM SIGINT SIGQUIT
