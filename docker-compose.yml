@@ -9,6 +9,8 @@ services:
         BUILD_TYPE: dev
       context: .
       dockerfile: ./src/flavor/Dockerfile.apache
+    cap_add:
+      - NET_BIND_SERVICE
     container_name: yii2-dev
     hostname: yii2-dev
     image: yii2-apache:${PHP_VERSION:-8.4}-debian-dev
@@ -35,7 +37,6 @@ services:
     environment:
       # Apache
       APACHE_DOCUMENT_ROOT: /var/www/app/web
-      APACHE_SERVER_NAME: ${SERVER_NAME:-localhost}
       # PHP
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
       PHP_DISPLAY_ERRORS: ${PHP_DISPLAY_ERRORS:-On}
@@ -80,6 +81,8 @@ services:
       context: .
       dockerfile: ./src/flavor/Dockerfile.apache
     image: yii2-apache:${PHP_VERSION:-8.4}-debian-prod
+    cap_add:
+      - NET_BIND_SERVICE
     container_name: yii2-prod
     user: www-data
     profiles: ["prod"]
@@ -92,7 +95,6 @@ services:
       - ./web/assets:/var/www/app/web/assets:delegated
     environment:
       APACHE_DOCUMENT_ROOT: /var/www/app/web
-      APACHE_SERVER_NAME: ${SERVER_NAME:-localhost}
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}
       PHP_DISPLAY_ERRORS: Off
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-30}
@@ -121,6 +123,8 @@ services:
       context: .
       dockerfile: ./src/flavor/Dockerfile.apache
     image: yii2-apache:${PHP_VERSION:-8.4}-debian-full
+    cap_add:
+      - NET_BIND_SERVICE
     container_name: yii2-full
     user: www-data
     profiles: ["test", "full"]

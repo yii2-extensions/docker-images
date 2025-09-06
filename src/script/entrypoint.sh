@@ -27,19 +27,27 @@ trap_signals() {
 # Trap signals for graceful shutdown
 trap trap_signals SIGTERM SIGINT
 
-# Function to update or append configuration in a file
+# Generic function to update or append configuration
 update_or_append_config() {
     local key="$1"
     local value="$2"
     local file="$3"
+    local format="${4:-ini}"  # Default to 'ini', can be 'apache' or 'ini'
 
-    # Check if the key exists in the config file
-    if grep -q "^${key} =" "$file"; then
-        # Update the existing key with the new value
-        sed -i "s|^${key} =.*|${key} = ${value}|" "$file"
+    if [[ "$format" == "apache" ]]; then
+        # Apache directive format: "Key Value"
+        if grep -Eq "^[[:space:]]*${key}\b" "$file"; then
+            sed -i -E "s|^[[:space:]]*${key}\b.*|${key} ${value}|" "$file"
+        else
+            echo "${key} ${value}" >> "$file"
+        fi
     else
-        # Append the key-value pair to the file
-        echo "${key} = ${value}" >> "$file"
+        # INI format: "key = value"
+        if grep -q "^${key} =" "$file"; then
+            sed -i "s|^${key} =.*|${key} = ${value}|" "$file"
+        else
+            echo "${key} = ${value}" >> "$file"
+        fi
     fi
 }
 
@@ -77,14 +85,8 @@ if [ "$(id -u)" = "0" ]; then
     fi
 
     # Set server name if provided to suppress warning
-    if [ -n "$APACHE_SERVER_NAME" ]; then
-        echo -e "${YELLOW}Setting Apache ServerName to: ${APACHE_SERVER_NAME}${NC}"
-        update_or_append_config "ServerName" "${APACHE_SERVER_NAME}" "/etc/apache2/apache2.conf"
-    else
-        # Set a default ServerName to suppress warnings
-        echo -e "${YELLOW}Setting default Apache ServerName to suppress warnings${NC}"
-        update_or_append_config "ServerName" "localhost" "/etc/apache2/apache2.conf"
-    fi
+    echo -e "${YELLOW}Setting Apache ServerName to: ${APACHE_SERVER_NAME:-localhost}${NC}"
+    update_or_append_config "ServerName" "${APACHE_SERVER_NAME:-localhost}" "/etc/apache2/apache2.conf" "apache"
 
     # Configure Xdebug for development/full builds
     # Set default Xdebug state based on build type
@@ -299,12 +301,12 @@ EOF
     echo -e "${YELLOW}Verifying Apache configuration...${NC}"
 
     # Check Apache configuration
-    if apache2ctl configtest 2>&1 | grep -q "Syntax OK"; then
-        echo -e "${GREEN}Apache configuration is valid${NC}"
+    if apache2ctl -t; then
+      echo -e "${GREEN}Apache configuration is valid${NC}"
     else
-        echo -e "${RED}Apache configuration test failed!${NC}"
-        apache2ctl configtest
-        exit 1
+      echo -e "${RED}Apache configuration test failed!${NC}"
+      apache2ctl -t
+      exit 1
     fi
 
     echo -e "${GREEN}Container initialization complete${NC}"
