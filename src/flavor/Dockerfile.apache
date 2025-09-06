@@ -1,8 +1,8 @@
 # Yii2 Docker - Debian Trixie with (Apache + MOD_PHP)
 # Supports: full (testing), dev (development), prod (production)
 
-ARG PHP_VERSION=8.4
 ARG BUILD_TYPE=dev
+ARG PHP_VERSION=8.4
 
 ###########################################
 # Stage 1: Base System
@@ -30,10 +30,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     netcat-openbsd \
-    netcat-openbsd \
+    gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/*
+
+# Install gosu for privilege de-escalation
+RUN set -eux; \
+    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+    curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.17/gosu-$dpkgArch"; \
+    curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.17/gosu-$dpkgArch.asc"; \
+    export GNUPGHOME="$(mktemp -d)"; \
+    gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
+    gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+    gpgconf --kill all; \
+    rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc; \
+    chmod +x /usr/local/bin/gosu; \
+    gosu --version; \
+    gosu nobody true
 
 # Enable Apache modules
 RUN a2enmod rewrite headers deflate expires ssl proxy_fcgi setenvif \
@@ -62,17 +76,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installation scripts
-COPY docker/scripts/install-*.sh /tmp/scripts/
-RUN chmod +x /tmp/scripts/*.sh
+COPY src/script/install-*.sh /tmp/script/
+RUN chmod +x /tmp/script/*.sh
 
 # Install database drivers based on BUILD_TYPE
 RUN if [ "$BUILD_TYPE" = "full" ]; then \
-        /tmp/scripts/install-oracle.sh && \
-        /tmp/scripts/install-mssql.sh; \
+        /tmp/script/install-oracle.sh && \
+        /tmp/script/install-mssql.sh; \
     fi
 
 # Clean up builder artifacts
-RUN rm -rf /tmp/scripts
+RUN rm -rf /tmp/script
 
 ###########################################
 # Stage 3: Asset Builder (Node.js/NPM)
@@ -134,7 +148,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- \
         --filename=composer
 
 # Copy Xdebug configuration
-COPY docker/configs/php/xdebug.ini /etc/php/${PHP_VERSION}/mods-available/
+COPY src/config/php/xdebug.ini /etc/php/${PHP_VERSION}/mods-available/
 
 # Create working directories
 RUN mkdir -p /var/www/.composer /var/www/.npm \
@@ -262,18 +276,21 @@ ENV APACHE_RUN_USER=www-data \
     PHP_VERSION=${PHP_VERSION} \
     BUILD_TYPE=${BUILD_TYPE}
 
-# Ensure run directory exists
-RUN mkdir -p /var/run/apache2 \
-    && chown www-data:www-data /var/run/apache2
+# Ensure run directory exists and configure log permissions
+RUN mkdir -p /var/run/apache2 /var/log/apache2 \
+    && chown www-data:www-data /var/run/apache2 /var/log/apache2 \
+    && chmod 755 /var/log/apache2 \
+    && touch /var/log/apache2/other_vhosts_access.log /var/log/apache2/error.log \
+    && chown www-data:www-data /var/log/apache2/other_vhosts_access.log /var/log/apache2/error.log
 
 # Copy configuration files
-COPY docker/configs/apache/apache2.conf /etc/apache2/apache2.conf
-COPY docker/configs/apache/vhost.conf /etc/apache2/sites-available/yii2.conf
-COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
-COPY docker/configs/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
+COPY src/config/apache/apache2.conf /etc/apache2/apache2.conf
+COPY src/config/apache/vhost.conf /etc/apache2/sites-available/yii2.conf
+COPY src/config/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
+COPY src/config/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
 
 # Copy entrypoint script
-COPY docker/scripts/entrypoint.sh /usr/local/bin/entrypoint
+COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
 
 # Enable the site
