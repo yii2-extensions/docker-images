@@ -197,7 +197,7 @@ services:
       MYSQL_DATABASE: yiitest
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./src/init-sql/mysql:/docker-entrypoint-initdb.d:ro
+      - ./runtime/init-sql/mysql:/docker-entrypoint-initdb.d:ro
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     networks:
@@ -219,7 +219,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/init-sql/postgres:/docker-entrypoint-initdb.d:ro
+      - ./src/runtime-sql/postgres:/docker-entrypoint-initdb.d:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
@@ -258,7 +258,7 @@ services:
       MONGO_INITDB_DATABASE: yii2
     volumes:
       - mongodb_data:/data/db
-      - ./src/init-js/mongo:/docker-entrypoint-initdb.d:ro
+      - ./runtime/init-js/mongo:/docker-entrypoint-initdb.d:ro
     ports:
       - "${MONGODB_PORT:-27017}:27017"
     networks:

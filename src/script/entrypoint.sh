@@ -2,123 +2,13 @@
 set -euo pipefail
 
 # =============================================================================
-# Docker Entrypoint
+# Docker Entrypoint - Generic for all services
 # =============================================================================
 
-# =============================================================================
 # Load common functionalities
-# =============================================================================
-source /usr/local/bin/common/01-globals.sh
-source /usr/local/bin/common/10-log.sh
-source /usr/local/bin/common/20-health.sh
-source /usr/local/bin/common/30-banner.sh
-source /usr/local/bin/common/30-composer.sh
-source /usr/local/bin/common/30-config.sh
-source /usr/local/bin/common/30-directories.sh
-source /usr/local/bin/common/30-php.sh
-source /usr/local/bin/common/30-service.sh
-source /usr/local/bin/common/30-shutdown.sh
-source /usr/local/bin/common/40-yii-migration.sh
-
-# =============================================================================
-# Load service module
-# =============================================================================
-load_service_module() {
-    local service_type="${SERVICE_TYPE:-apache}"
-    local module_paths=(
-        "/usr/local/bin/configure-${service_type}.sh"
-        "/var/www/app/docker/scripts/configure-${service_type}.sh"
-        "/docker/scripts/configure-${service_type}.sh"
-    )
-
-    for module_path in "${module_paths[@]}"; do
-        if [[ -f "$module_path" ]]; then
-            log INFO "Loading ${service_type} configuration module from $module_path"
-            # shellcheck disable=SC1090
-            source "$module_path"
-            return 0
-        fi
-    done
-
-    log WARNING "${service_type} configuration module not found, using fallback"
-    return 1
-}
-
-# =============================================================================
-# Generic Service Configuration (fallback)
-# =============================================================================
-configure_service_fallback() {
-    log INFO "Using fallback service configuration..."
-
-    # Basic Apache fallback
-    if command -v apache2ctl >/dev/null 2>&1; then
-        log INFO "Configuring Apache (fallback implementation)..."
-
-        local apache_conf="/etc/apache2/apache2.conf"
-        if [[ -w "$apache_conf" ]]; then
-            [[ -n "${APACHE_KEEP_ALIVE_TIMEOUT:-}" ]] && update_config "KeepAliveTimeout" "${APACHE_KEEP_ALIVE_TIMEOUT}" "$apache_conf" "apache"
-            [[ -n "${APACHE_KEEP_ALIVE:-}" ]] && update_config "KeepAlive" "${APACHE_KEEP_ALIVE}" "$apache_conf" "apache"
-            [[ -n "${APACHE_LOG_LEVEL:-}" ]] && update_config "LogLevel" "${APACHE_LOG_LEVEL}" "$apache_conf" "apache"
-            [[ -n "${APACHE_SERVER_NAME:-}" ]] && update_config "ServerName" "${APACHE_SERVER_NAME:-localhost}" "$apache_conf" "apache"
-            log SUCCESS "Apache configuration updated (fallback)"
-        else
-            log WARNING "Cannot modify Apache config - insufficient permissions"
-        fi
-    fi
-}
-
-# =============================================================================
-# Configure service
-# =============================================================================
-configure_service() {
-    if declare -f configure_service_impl >/dev/null 2>&1; then
-        log INFO "Using modular service configuration..."
-        configure_service_impl
-    else
-        configure_service_fallback
-    fi
-}
-
-# =============================================================================
-# Service Verification (generic)
-# =============================================================================
-verify_service() {
-    if declare -f verify_service_impl >/dev/null 2>&1; then
-        verify_service_impl
-    elif command -v apache2ctl >/dev/null 2>&1; then
-        log INFO "Verifying Apache configuration..."
-        if apache2ctl -t 2>&1 | grep -q "Syntax OK"; then
-            log SUCCESS "Apache configuration valid"
-        else
-            log ERROR "Apache configuration invalid"
-            apache2ctl -t
-            exit 1
-        fi
-    else
-        log INFO "No service verification available"
-    fi
-}
-
-# =============================================================================
-# Wait for databases
-# =============================================================================
-wait_for_databases() {
-    [[ "${SKIP_DB_WAIT:-false}" == "true" ]] && return
-
-    local should_wait=false
-    [[ "${WAIT_FOR_SERVICES:-false}" == "true" ]] && should_wait=true
-    [[ "${BUILD_TYPE:-}" == "full" ]] && should_wait=true
-    [[ "${YII_ENV:-}" == "test" ]] && should_wait=true
-
-    [[ "$should_wait" == "false" ]] && return
-
-    [[ -n "${DB_MSSQL_HOST:-}" ]] && wait_for_service "${DB_MSSQL_HOST}" "${DB_MSSQL_PORT:-1433}" "SQL Server"
-    [[ -n "${DB_MYSQL_HOST:-}" ]] && wait_for_service "${DB_MYSQL_HOST}" "${DB_MYSQL_PORT:-3306}" "MySQL"
-    [[ -n "${DB_ORACLE_HOST:-}" ]] && wait_for_service "${DB_ORACLE_HOST}" "${DB_ORACLE_PORT:-1521}" "Oracle"
-    [[ -n "${DB_PGSQL_HOST:-}" ]] && wait_for_service "${DB_PGSQL_HOST}" "${DB_PGSQL_PORT:-5432}" "PostgreSQL"
-    [[ -n "${DB_REDIS_HOST:-}" ]] && wait_for_service "${DB_REDIS_HOST}" "${DB_REDIS_PORT:-6379}" "Redis"
-    [[ -n "${DB_MONGODB_HOST:-}" ]] && wait_for_service "${DB_MONGODB_HOST}" "${DB_MONGODB_PORT:-27017}" "MongoDB"
-}
+for script in /usr/local/bin/common/*.sh; do
+    [[ -f "$script" ]] && source "$script"
+done
 
 # =============================================================================
 # Main execution
@@ -126,49 +16,102 @@ wait_for_databases() {
 main() {
     print_banner
 
-    # Load service-specific module
-    load_service_module
+    # Check if we need to escalate privileges for initialization
+    if [[ "$(id -u)" != "0" ]]; then
+        # We're running as non-root (www-data), but we need root privileges for initialization
+        # Use exec with sudo to restart as root, then switch back to www-data for the final process
+        if command -v sudo >/dev/null 2>&1; then
+            log INFO "Escalating to root for system initialization..."
+            exec sudo -E "$0" "$@"
+        else
+            log WARNING "Running as non-root user without sudo - some initialization steps may fail"
+        fi
+    fi
 
-    if [ "$(id -u)" = "0" ]; then
+    # Only run initialization if we're root
+    if [[ "$(id -u)" == "0" ]]; then
         log INFO "Running as root - performing system configuration..."
 
-        # Setup service environment if available
-        if declare -f setup_service_environment >/dev/null 2>&1; then
-            setup_service_environment
-        fi
-
-        # Setup service directories if available
-        if declare -f setup_service_directories >/dev/null 2>&1; then
-            setup_service_directories
-        fi
-
-        configure_service
-        php_configure
+        # Setup directories
         setup_directories
-        verify_service
 
-        # Final permissions
+        # SSL setup for Apache with HTTP/2 (non-blocking)
+        if [[ "${SERVICE_TYPE:-}" == "apache-fpm" ]] && command -v apache2 >/dev/null 2>&1; then
+            source /usr/local/bin/common/30-ssl.sh || log WARNING "SSL setup failed, continuing without SSL"
+        fi
+
+        # PHP configuration via environment variables (if PHP is installed)
+        if command -v php >/dev/null 2>&1; then
+            php_configure
+        fi
+
+        # Set final permissions
         if [[ -d "/var/www/app" ]]; then
             log INFO "Setting final permissions..."
             chown -R www-data:www-data /var/www/app/runtime 2>/dev/null || true
             chown -R www-data:www-data /var/www/app/web/assets 2>/dev/null || true
         fi
+    else
+        log INFO "Running as non-root user: $(id -un)"
     fi
 
+    # Wait for databases if configured
     wait_for_databases
+
+    # Composer install
     composer_install
+
+    # Run migrations
     yii_run_migrations
+
+    # Create health endpoint
     health_create_endpoint
 
     log SUCCESS "Container initialization complete!"
-    log INFO "Starting service..."
+    log INFO "Starting services..."
     echo "" >&2
 
-    if [[ $# -eq 0 && -x "$(command -v apache2ctl)" ]]; then
-        set -- apache2ctl -DFOREGROUND
+    # If no command specified, start supervisor
+    if [[ $# -eq 0 ]]; then
+        exec supervisord -c /etc/supervisor/supervisord.conf
+    else
+        exec "$@"
     fi
-
-    exec "$@"
 }
 
+# =============================================================================
+# Wait for databases (simplified)
+# =============================================================================
+wait_for_databases() {
+    [[ "${SKIP_DB_WAIT:-false}" == "true" ]] && return
+
+    # Auto-detect if we should wait based on environment
+    local should_wait=false
+    [[ "${WAIT_FOR_SERVICES:-false}" == "true" ]] && should_wait=true
+    [[ "${YII_ENV:-}" == "test" ]] && should_wait=true
+
+    [[ "$should_wait" == "false" ]] && return
+
+    # Wait for configured databases
+    for db_type in MYSQL PGSQL REDIS MONGODB MSSQL ORACLE; do
+        local host_var="DB_${db_type}_HOST"
+        local port_var="DB_${db_type}_PORT"
+
+        if [[ -n "${!host_var:-}" ]]; then
+            local default_port
+            case $db_type in
+                MYSQL)   default_port=3306 ;;
+                PGSQL)   default_port=5432 ;;
+                REDIS)   default_port=6379 ;;
+                MONGODB) default_port=27017 ;;
+                MSSQL)   default_port=1433 ;;
+                ORACLE)  default_port=1521 ;;
+            esac
+
+            wait_for_service "${!host_var}" "${!port_var:-$default_port}" "$db_type"
+        fi
+    done
+}
+
+# Execute main function
 main "$@"

@@ -1,169 +1,87 @@
 #!/bin/bash
 set -e
 
-# Colors for output
+# =============================================================================
+# Simplified Build Script for Yii2 Docker Images
+# =============================================================================
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Default values
+# Configuration
 PHP_VERSION=${PHP_VERSION:-8.4}
 BUILD_TYPE=${1:-dev}
-DOCKERFILE=${DOCKERFILE:-./src/flavor/apache/Dockerfile.apache}
+DOCKERFILE=${2:-src/flavor/apache/Dockerfile.apache}
+IMAGE_PREFIX=${IMAGE_PREFIX:-yii2}
 
-# Function to print colored output
-print_info() {
+# Functions
+log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-print_success() {
+log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-print_error() {
+log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-# Check if we're in the right directory
-if [ ! -f "$DOCKERFILE" ]; then
-    print_error "Dockerfile not found: $DOCKERFILE"
-    print_info "Please run this script from the project root directory"
     exit 1
-fi
-
-# Check if docker is installed
-if ! command -v docker &> /dev/null; then
-    print_error "Docker is not installed"
-    exit 1
-fi
+}
 
 # Validate build type
 case $BUILD_TYPE in
     dev|prod|full)
-        print_info "Building variant: $BUILD_TYPE"
+        log_info "Building: $BUILD_TYPE"
         ;;
     *)
-        print_error "Invalid BUILD_TYPE: $BUILD_TYPE"
-        print_info "Valid options are: dev, prod, full"
-        exit 1
+        log_error "Invalid BUILD_TYPE: $BUILD_TYPE (use: dev, prod, or full)"
         ;;
 esac
 
-# Create necessary directories if they don't exist
-print_info "Creating directory structure..."
-mkdir -p app/web
-mkdir -p src/{config,script,ssl}
-mkdir -p runtime
-mkdir -p web/assets
+# Check Docker
+command -v docker >/dev/null 2>&1 || log_error "Docker is not installed"
 
-# Check for required configuration files
-REQUIRED_FILES=(
-    "src/config/apache/apache2.conf"
-    "src/config/apache/vhost.conf"
-    "src/config/php/${BUILD_TYPE}.ini"
-    "src/script/entrypoint.sh"
-)
+# Check Dockerfile exists
+[[ -f "$DOCKERFILE" ]] || log_error "Dockerfile not found: $DOCKERFILE"
 
-if [ "$BUILD_TYPE" = "full" ]; then
-    REQUIRED_FILES+=(
-        "src/script/install-oracle.sh"
-        "src/script/install-mssql.sh"
-    )
-fi
+# Create required directories
+log_info "Creating directory structure..."
+mkdir -p \
+    src/php \
+    src/php-fpm \
+    src/supervisor/conf.d \
+    src/flavor/apache/config \
+    src/flavor/apache/script \
+    src/script/common \
+    app/web \
+    runtime \
+    web/assets
 
-if [ "$BUILD_TYPE" = "dev" ] || [ "$BUILD_TYPE" = "full" ]; then
-    REQUIRED_FILES+=("src/config/php/xdebug.ini")
-fi
+# Build image
+IMAGE_TAG="${IMAGE_PREFIX}:${PHP_VERSION}-${BUILD_TYPE}"
+log_info "Building Docker image: $IMAGE_TAG"
 
-# Check for missing files
-MISSING_FILES=()
-for file in "${REQUIRED_FILES[@]}"; do
-    if [ ! -f "$file" ]; then
-        MISSING_FILES+=("$file")
-    fi
-done
-
-if [ ${#MISSING_FILES[@]} -gt 0 ]; then
-    print_warning "Missing configuration files:"
-    for file in "${MISSING_FILES[@]}"; do
-        echo "  - $file"
-    done
-    print_info "Creating dummy files for missing configurations..."
-    for file in "${MISSING_FILES[@]}"; do
-        mkdir -p "$(dirname "$file")"
-        touch "$file"
-        print_info "Created: $file"
-    done
-fi
-
-# Build the Docker image
-IMAGE_TAG="yii2-apache:${PHP_VERSION}-debian-${BUILD_TYPE}"
-print_info "Building Docker image: $IMAGE_TAG"
-print_info "PHP Version: $PHP_VERSION"
-print_info "Build Type: $BUILD_TYPE"
-
-# Build command with proper arguments
 docker build \
     --build-arg PHP_VERSION="${PHP_VERSION}" \
     --build-arg BUILD_TYPE="${BUILD_TYPE}" \
     --tag "${IMAGE_TAG}" \
     --file "${DOCKERFILE}" \
-    .
+    . || log_error "Docker build failed"
 
-if [ $? -eq 0 ]; then
-    print_success "Docker image built successfully: $IMAGE_TAG"
+log_success "Image built successfully: $IMAGE_TAG"
 
-    # Show image info
-    echo ""
-    print_info "Image details:"
-    docker images | grep -E "REPOSITORY|${IMAGE_TAG}"
+# Show image info
+echo ""
+docker images | grep -E "REPOSITORY|${IMAGE_TAG}"
 
-    echo ""
-    print_info "To run the container:"
-    echo -e "${GREEN}docker run -p 8080:80 -v ./app:/var/www/app ${IMAGE_TAG}${NC}"
-
-    echo ""
-    print_info "To run with docker-compose:"
-    echo -e "${GREEN}docker compose up -d yii2-${BUILD_TYPE}${NC}"
-else
-    print_error "Docker build failed"
-    exit 1
-fi
-
-# Optional: Run tests for the built image
-if [ "$2" = "--test" ]; then
-    print_info "Running basic tests..."
-
-    # Start a test container
-    CONTAINER_NAME="yii2-test-${BUILD_TYPE}"
-    docker run -d --name "${CONTAINER_NAME}" "${IMAGE_TAG}"
-
-    # Wait for container to be ready
-    sleep 5
-
-    # Check PHP version
-    print_info "Checking PHP version..."
-    docker exec "${CONTAINER_NAME}" php -v | grep "PHP ${PHP_VERSION}"
-
-    # Check installed extensions
-    print_info "Checking PHP extensions..."
-    docker exec "${CONTAINER_NAME}" php -m | grep -E "pdo|intl|mbstring|opcache"
-
-    # Additional checks for full build
-    if [ "$BUILD_TYPE" = "full" ]; then
-        print_info "Checking Oracle and MSSQL extensions..."
-        docker exec "${CONTAINER_NAME}" php -m | grep -E "oci8|sqlsrv" || print_warning "Oracle/MSSQL extensions not found"
-    fi
-
-    # Clean up test container
-    docker stop "${CONTAINER_NAME}"
-    docker rm "${CONTAINER_NAME}"
-
-    print_success "Tests completed"
-fi
+# Usage instructions
+echo ""
+log_info "Run with:"
+echo -e "${GREEN}docker run -p 8080:80 -v ./app:/var/www/app ${IMAGE_TAG}${NC}"
+echo ""
+log_info "Or with docker-compose:"
+echo -e "${GREEN}docker compose up ${BUILD_TYPE}${NC}"
