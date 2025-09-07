@@ -1,18 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-# =============================================================================
+#==============================================================================
 # Docker Entrypoint - Generic for all services
-# =============================================================================
+#==============================================================================
 
 # Load common functionalities
 for script in /usr/local/bin/common/*.sh; do
     [[ -f "$script" ]] && source "$script"
 done
 
-# =============================================================================
 # Main execution
-# =============================================================================
 main() {
     print_banner
 
@@ -42,7 +40,7 @@ main() {
 
         # PHP configuration via environment variables (if PHP is installed)
         if command -v php >/dev/null 2>&1; then
-            php_configure
+            configure_php
         fi
 
         # Set final permissions
@@ -79,9 +77,7 @@ main() {
     fi
 }
 
-# =============================================================================
 # Wait for databases (simplified)
-# =============================================================================
 wait_for_databases() {
     [[ "${SKIP_DB_WAIT:-false}" == "true" ]] && return
 

@@ -1,6 +1,7 @@
-# =============================================================================
+#==============================================================================
 # Setup directories
-# =============================================================================
+#==============================================================================
+
 setup_directories() {
     log INFO "Setting up application directories..."
 
@@ -38,6 +39,6 @@ setup_directories() {
     # Set specific permissions for key directories
     chmod 775 /var/www/app/runtime 2>/dev/null || true
     chmod 775 /var/www/app/web/assets 2>/dev/null || true
-    
+
     log SUCCESS "Application and service directories prepared"
 }

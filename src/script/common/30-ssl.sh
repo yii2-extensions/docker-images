@@ -1,8 +1,6 @@
-#!/bin/bash
-#
-# SSL Certificate Management for Yii2 Docker
-# Generates self-signed certificates if none exist
-#
+#==============================================================================
+# SSL setup for Apache with HTTP/2 support
+#==============================================================================
 
 # Load logging functions from system
 source /usr/local/bin/common/10-log.sh

@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+#==============================================================================
 # Microsoft SQL Server Drivers Installation Script
 # Installs ODBC Driver and PHP extensions (sqlsrv, pdo_sqlsrv)
+#==============================================================================
 
 echo "Installing Microsoft SQL Server drivers..."
 

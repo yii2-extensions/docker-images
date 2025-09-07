@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+#==============================================================================
 # Oracle Instant Client Installation Script
 # Version: 21.x (Latest LTS)
+#==============================================================================
 
 echo "Installing Oracle Instant Client and PHP extensions..."
 
@@ -17,7 +19,7 @@ install_packages() {
 install_oracle_extension() {
     local extension="$1"
     local fallback_version="$2"
-    
+
     echo "Installing PHP $extension extension..."
     printf "instantclient,/opt/oracle/instantclient_21_13\n" | pecl install "$extension" || {
         echo "Warning: $extension installation failed, trying version $fallback_version..."

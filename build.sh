@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-# =============================================================================
-# Simplified Build Script for Yii2 Docker Images
-# =============================================================================
+#==============================================================================
+# Build Script for Yii2 Docker Images
+#==============================================================================
 
 # Colors
 RED='\033[0;31m'
@@ -51,12 +51,6 @@ command -v docker >/dev/null 2>&1 || log_error "Docker is not installed"
 # Create required directories
 log_info "Creating directory structure..."
 mkdir -p \
-    src/php \
-    src/php-fpm \
-    src/supervisor/conf.d \
-    src/flavor/apache/config \
-    src/flavor/apache/script \
-    src/script/common \
     app/web \
     runtime \
     web/assets
