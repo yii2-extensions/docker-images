@@ -19,6 +19,7 @@ services:
     volumes:
       # Application code
       - ./app:/var/www/app:delegated
+      - ./app/web/assets:/var/www/app/web/assets:delegated
       # Composer cache
       - composer_cache:/var/www/.composer:delegated
       # NPM cache (for foxy)
@@ -28,10 +29,8 @@ services:
       # Vendor directory for faster installs
       - vendor:/var/www/app/vendor:delegated
       # Runtime directories
+      - ./runtime/ssl:/etc/apache2/ssl:ro
       - ./runtime:/var/www/app/runtime:delegated
-      - ./web/assets:/var/www/app/web/assets:delegated
-      # SSL certificates (optional)
-      - ./src/ssl:/etc/apache2/ssl:ro
     environment:
       # Apache
       APACHE_DOCUMENT_ROOT: /var/www/app/web
@@ -88,9 +87,9 @@ services:
       - "${HTTP_PORT:-8080}:80"
       - "${HTTPS_PORT:-8443}:443"
     volumes:
-      - ./app:/var/www/app:ro
+      - ./app/web/assets:/var/www/app/web/assets:delegated
+      - ./app:/var/www/app:delegated
       - ./runtime:/var/www/app/runtime:delegated
-      - ./web/assets:/var/www/app/web/assets:delegated
     environment:
       APACHE_DOCUMENT_ROOT: /var/www/app/web
       PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}

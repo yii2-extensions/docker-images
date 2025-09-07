@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -e
 
 #==============================================================================
 # Build Script for Yii2 Docker Images
