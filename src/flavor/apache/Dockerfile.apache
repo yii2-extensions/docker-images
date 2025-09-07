@@ -1,12 +1,14 @@
+# =============================================================================
 # Yii2 Docker - Debian Trixie with (Apache + MOD_PHP)
 # Supports: full (testing), dev (development), prod (production)
+# =============================================================================
 
 ARG BUILD_TYPE=dev
 ARG PHP_VERSION=8.4
 
-###########################################
+# =============================================================================
 # Stage 1: Base System
-###########################################
+# =============================================================================
 FROM debian:trixie-slim AS base
 
 ARG PHP_VERSION
@@ -53,9 +55,9 @@ RUN set -eux; \
 RUN a2enmod rewrite headers deflate expires ssl proxy_fcgi setenvif \
     && a2dissite 000-default
 
-###########################################
+# =============================================================================
 # Stage 2: Builder (compile extensions)
-###########################################
+# =============================================================================
 FROM base AS builder
 
 ARG PHP_VERSION
@@ -88,9 +90,9 @@ RUN if [ "$BUILD_TYPE" = "full" ]; then \
 # Clean up builder artifacts
 RUN rm -rf /tmp/script
 
-###########################################
+# =============================================================================
 # Stage 3: Asset Builder (Node.js/NPM)
-###########################################
+# =============================================================================
 FROM node:20-slim AS asset-builder
 
 WORKDIR /build
@@ -110,9 +112,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Pre-install foxy globally to speed up builds
 RUN composer global require php-forge/foxy
 
-###########################################
+# =============================================================================
 # Stage 4: Development Image
-###########################################
+# =============================================================================
 FROM base AS dev
 
 ARG PHP_VERSION
@@ -154,9 +156,9 @@ COPY src/config/php/xdebug.ini /etc/php/${PHP_VERSION}/mods-available/
 RUN mkdir -p /var/www/.composer /var/www/.npm \
     && chown -R www-data:www-data /var/www
 
-###########################################
+# =============================================================================
 # Stage 5: Oracle Files Collector
-###########################################
+# =============================================================================
 FROM builder AS oracle_files
 RUN PHP_EXT_DIR="$(php -r 'echo ini_get("extension_dir");')" && \
     mkdir -p /copy_stage/oracle /copy_stage/microsoft /copy_stage/php_ext && \
@@ -164,9 +166,9 @@ RUN PHP_EXT_DIR="$(php -r 'echo ini_get("extension_dir");')" && \
     (cp -r /opt/microsoft/* /copy_stage/microsoft/ 2>/dev/null || true) && \
     (cp "$PHP_EXT_DIR"/*.so /copy_stage/php_ext/ 2>/dev/null || true)
 
-###########################################
+# =============================================================================
 # Stage 6: Full Testing Image
-###########################################
+# =============================================================================
 FROM dev AS full
 
 ARG PHP_VERSION
@@ -231,9 +233,9 @@ RUN PHP_EXT_DIR=$(php -r "echo ini_get('extension_dir');") && \
 ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_21_13" \
     NLS_LANG=AMERICAN_AMERICA.UTF8
 
-###########################################
+# =============================================================================
 # Stage 7: Production Image
-###########################################
+# =============================================================================
 FROM base AS prod
 
 ARG PHP_VERSION
@@ -258,9 +260,9 @@ RUN rm -rf /var/www/html/* \
     && a2dismod status 2>/dev/null || true \
     && a2dismod info 2>/dev/null || true
 
-###########################################
+# =============================================================================
 # Stage 8: Final Image Selection
-###########################################
+# =============================================================================
 FROM ${BUILD_TYPE} AS final
 
 ARG PHP_VERSION
@@ -289,9 +291,11 @@ COPY src/config/apache/vhost.conf /etc/apache2/sites-available/yii2.conf
 COPY src/config/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/apache2/conf.d/99-yii2.ini
 COPY src/config/php/${BUILD_TYPE}.ini /etc/php/${PHP_VERSION}/cli/conf.d/99-yii2.ini
 
-# Copy entrypoint script
+# Copy entrypoint script and Apache configuration module
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
-RUN chmod +x /usr/local/bin/entrypoint
+COPY src/script/common/* /usr/local/bin/common/
+COPY src/flavor/apache/script/configure-apache.sh /usr/local/bin/configure-apache.sh
+RUN chmod +x /usr/local/bin/entrypoint /usr/local/bin/configure-apache.sh
 
 # Enable the site
 RUN a2ensite yii2
@@ -302,9 +306,18 @@ WORKDIR /var/www/app
 # Expose ports
 EXPOSE 80 443
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+# Health check with configurable path
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost${HEALTHCHECK_PATH:-/health} || exit 1
+
+# Labels for metadata
+LABEL maintainer="Wilmer Arambula <@terabytesoftw>" \
+      org.opencontainers.image.title="Yii2 Apache PHP ${PHP_VERSION}" \
+      org.opencontainers.image.description="Yii2 Framework with Apache, PHP ${PHP_VERSION}, and mod_php on Debian Trixie" \
+      org.opencontainers.image.vendor="Yii2 Extensions" \
+      org.opencontainers.image.version="${BUILD_TYPE}-${PHP_VERSION}" \
+      org.opencontainers.image.source="https://github.com/yii2-extensions/docker-images/pkgs/container/apache" \
+      org.opencontainers.image.licenses="BSD -3-Clause"
 
 # Set entrypoint
 ENTRYPOINT ["entrypoint"]

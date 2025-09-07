@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Microsoft SQL Server Drivers Installation Script for Debian Trixie
 # Installs ODBC Driver and PHP extensions (sqlsrv, pdo_sqlsrv)
