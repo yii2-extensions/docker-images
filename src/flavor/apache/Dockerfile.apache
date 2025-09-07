@@ -151,13 +151,13 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
 # Copy configurations
-COPY src/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
+COPY src/flavor/apache/etc/apache2.conf /etc/apache2/apache2.conf
+COPY src/flavor/apache/etc/security-enhanced.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/vhost.conf /etc/apache2/sites-available/yii2.conf
 COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-app.conf
-COPY src/flavor/apache/config/apache2.conf /etc/apache2/apache2.conf
-COPY src/flavor/apache/config/security-enhanced.conf /etc/apache2/conf-available/
-COPY src/flavor/apache/config/vhost.conf /etc/apache2/sites-available/yii2.conf
-COPY src/supervisor/supervisord.conf /etc/supervisor/
+COPY src/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY src/supervisor/conf.d/*.conf /etc/supervisor/conf.d/
+COPY src/supervisor/supervisord.conf /etc/supervisor/
 
 # Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
