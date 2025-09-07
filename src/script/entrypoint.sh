@@ -7,19 +7,21 @@ set -euo pipefail
 
 # Load common functionalities
 for script in /usr/local/bin/common/*.sh; do
-    [[ -f "$script" ]] && source "$script"
+    [[ -f "$script" && "$(basename "$script")" != "30-ssl.sh" ]] && source "$script"
 done
 
 # Main execution
 main() {
-    print_banner
+    if [[ "$(id -u)" == "0" ]]; then
+        print_banner
+        log INFO "Escalating to root for system initialization..."
+    fi
 
     # Check if we need to escalate privileges for initialization
     if [[ "$(id -u)" != "0" ]]; then
         # We're running as non-root (www-data), but we need root privileges for initialization
         # Use exec with sudo to restart as root, then switch back to www-data for the final process
         if command -v sudo >/dev/null 2>&1; then
-            log INFO "Escalating to root for system initialization..."
             exec sudo -E "$0" "$@"
         else
             log WARNING "Running as non-root user without sudo - some initialization steps may fail"
@@ -36,11 +38,6 @@ main() {
         # SSL setup for Apache with HTTP/2 (non-blocking)
         if [[ "${SERVICE_TYPE:-}" == "apache-fpm" ]] && command -v apache2 >/dev/null 2>&1; then
             source /usr/local/bin/common/30-ssl.sh || log WARNING "SSL setup failed, continuing without SSL"
-        fi
-
-        # PHP configuration via environment variables (if PHP is installed)
-        if command -v php >/dev/null 2>&1; then
-            configure_php
         fi
 
         # Set final permissions

@@ -12,14 +12,40 @@ ARG PHP_VERSION=8.4
 FROM php:${PHP_VERSION}-fpm-trixie AS base
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    # GD configuration
     IPE_GD_WITHOUTAVIF=1 \
-    # PHP-FPM defaults
-    PHP_FPM_PM=dynamic \
+    # PHP Configuration
+    PHP_CATCH_OUTPUT=yes \
+    PHP_DATE_TIMEZONE=UTC \
+    PHP_DEFAULT_SOCKET_TIMEOUT=60 \
+    PHP_DISABLE_FUNCTIONS=exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source \
+    PHP_DISPLAY_ERRORS=off \
+    PHP_DISPLAY_STARTUP_ERRORS=off \
+    PHP_ERROR_REPORTING="E_ALL & ~E_DEPRECATED & ~E_STRICT" \
+    PHP_EXPOSE=off \
+    PHP_LOG_ERRORS=on \
+    PHP_MAX_EXECUTION_TIME=30 \
+    PHP_MAX_FILE_UPLOADS=20 \
+    PHP_MAX_INPUT_TIME=60 \
+    PHP_MEMORY_LIMIT=256M \
+    PHP_POST_MAX_SIZE=50M \
+    PHP_REQUEST_TIMEOUT=30 \
+    PHP_RLIMIT_FILES=131072 \
+    PHP_SESSION_HANDLER=files \
+    PHP_SESSION_PATH=/var/lib/php/sessions \
+    PHP_SLOWLOG_TIMEOUT=5s \
+    PHP_UPLOAD_MAX_FILESIZE=50M \
+    # PHP-FPM Configuration
+    PHP_FPM_ACCESS_LOG=/proc/self/fd/1 \
+    PHP_FPM_LOG_LEVEL=warning \
     PHP_FPM_MAX_CHILDREN=50 \
-    PHP_FPM_START_SERVERS=5 \
-    PHP_FPM_MIN_SPARE=5 \
+    PHP_FPM_MAX_REQUESTS=500 \
     PHP_FPM_MAX_SPARE=35 \
-    PHP_FPM_MAX_REQUESTS=500
+    PHP_FPM_MIN_SPARE=5 \
+    PHP_FPM_PING_PATH=/fpm-ping \
+    PHP_FPM_PM=dynamic \
+    PHP_FPM_START_SERVERS=5 \
+    PHP_FPM_STATUS_PATH=/fpm-status
 
 # Install Apache and tools
 RUN apt-get update && apt-get install -y --no-install-recommends \

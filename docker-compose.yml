@@ -29,7 +29,7 @@ services:
       # Vendor directory for faster installs
       - vendor:/var/www/app/vendor:delegated
       # Runtime directories
-      - ./runtime/ssl:/etc/apache2/ssl:ro
+      - ./runtime/ssl:/etc/apache2/ssl
       - ./runtime:/var/www/app/runtime:delegated
     environment:
       # Apache
