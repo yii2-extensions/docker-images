@@ -153,19 +153,19 @@ services:
       YII_ENV: test
       ENABLE_HEALTH_ENDPOINT: ${ENABLE_HEALTH_ENDPOINT:-true}
       DB_MONGODB_HOST: mongodb
-      DB_MONGODB_DATABASE: yii2test
+      DB_MONGODB_DATABASE: yiitest
       DB_MONGODB_USERNAME: root
       DB_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongopass}
       DB_MSSQL_HOST: mssql
-      DB_MSSQL_DATABASE: yii2test
+      DB_MSSQL_DATABASE: yiitest
       DB_MSSQL_USERNAME: SA
       DB_MSSQL_PASSWORD: ${MSSQL_PASSWORD:-YourStr0ng!Passw0rd}
       DB_MYSQL_HOST: mysql
-      DB_MYSQL_DATABASE: yii2test
+      DB_MYSQL_DATABASE: yiitest
       DB_MYSQL_USERNAME: root
       DB_MYSQL_PASSWORD: ${DB_PASSWORD:-root}
       DB_PGSQL_HOST: postgres
-      DB_PGSQL_DATABASE: yii2test
+      DB_PGSQL_DATABASE: yiitest
       DB_PGSQL_USERNAME: postgres
       DB_PGSQL_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_ORACLE_HOST: oracle

@@ -22,9 +22,9 @@ setup_directories() {
     for dir in "${dirs[@]}"; do
         if [[ ! -d "$dir" ]]; then
             mkdir -p "$dir"
-            chown www-data:www-data "$dir" 2>/dev/null || true
             log DEBUG "Created: $dir"
         fi
+        chown www-data:www-data "$dir" 2>/dev/null || true
     done
 
     chmod 775 /var/www/app/runtime 2>/dev/null || true

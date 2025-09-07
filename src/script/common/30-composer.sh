@@ -18,7 +18,8 @@ composer_install() {
     fi
 
     log INFO "Installing Composer dependencies..."
-    cd /var/www/app
+    # Run inside app dir; fail fast if missing
+    cd /var/www/app || { log ERROR "App directory not found: /var/www/app"; return 1; }
 
     local -a cmd=(composer install --no-interaction --no-progress --optimize-autoloader)
 

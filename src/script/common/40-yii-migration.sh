@@ -7,7 +7,7 @@ yii_run_migrations() {
     [[ "${YII_ENV:-}" == "test" ]] && { log INFO "Test environment, skipping migrations"; return; }
 
     log INFO "Running database migrations..."
-    cd /var/www/app
+    cd /var/www/app || { log ERROR "Failed to cd to /var/www/app"; [[ "${FAIL_ON_MIGRATION_ERROR:-true}" == "true" ]] && exit 1 || return 1; }
 
     if gosu www-data php yii migrate --interactive=0; then
         log SUCCESS "Migrations completed"

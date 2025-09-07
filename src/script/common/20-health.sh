@@ -8,7 +8,7 @@ health_create_endpoint() {
     local health_file="/var/www/app/web${health_path}"
     [[ "${health_path}" != *".php" ]] && health_file="${health_file}/index.php"
 
-    # Check if health endpoint already exists (for example, in production with read-only filesystem)
+    # Check if health endpoint already exists
     if [[ -f "$health_file" ]]; then
         log INFO "Health endpoint already exists at ${health_path}"
         return 0
@@ -22,6 +22,7 @@ health_create_endpoint() {
         return 0
     fi
 
+    # Write the health endpoint file
     cat > "$health_file" << 'HEALTH_PHP'
 <?php
 header('Content-Type: application/json; charset=utf-8');
@@ -45,7 +46,15 @@ foreach ($extensions as $ext) {
 echo json_encode($health, JSON_PRETTY_PRINT);
 HEALTH_PHP
 
+    # Check if the write was successful
+    if [[ ! -f "$health_file" ]]; then
+        log ERROR "Failed to write health endpoint at ${health_path}"
+        return 1
+    fi
+
+    # Set permissions only if file exists
     chown www-data:www-data "$health_file" 2>/dev/null || true
-    chmod 644 "$health_file"
+    chmod 644 "$health_file" 2>/dev/null || true
+
     log SUCCESS "Health endpoint created"
 }
