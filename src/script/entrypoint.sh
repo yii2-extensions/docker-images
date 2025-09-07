@@ -34,6 +34,7 @@ load_service_module() {
     for module_path in "${module_paths[@]}"; do
         if [[ -f "$module_path" ]]; then
             log INFO "Loading ${service_type} configuration module from $module_path"
+            # shellcheck disable=SC1090
             source "$module_path"
             return 0
         fi
@@ -111,7 +112,9 @@ wait_for_databases() {
 
     [[ "$should_wait" == "false" ]] && return
 
+    [[ -n "${DB_MSSQL_HOST:-}" ]] && wait_for_service "${DB_MSSQL_HOST}" "${DB_MSSQL_PORT:-1433}" "SQL Server"
     [[ -n "${DB_MYSQL_HOST:-}" ]] && wait_for_service "${DB_MYSQL_HOST}" "${DB_MYSQL_PORT:-3306}" "MySQL"
+    [[ -n "${DB_ORACLE_HOST:-}" ]] && wait_for_service "${DB_ORACLE_HOST}" "${DB_ORACLE_PORT:-1521}" "Oracle"
     [[ -n "${DB_PGSQL_HOST:-}" ]] && wait_for_service "${DB_PGSQL_HOST}" "${DB_PGSQL_PORT:-5432}" "PostgreSQL"
     [[ -n "${DB_REDIS_HOST:-}" ]] && wait_for_service "${DB_REDIS_HOST}" "${DB_REDIS_PORT:-6379}" "Redis"
     [[ -n "${DB_MONGODB_HOST:-}" ]] && wait_for_service "${DB_MONGODB_HOST}" "${DB_MONGODB_PORT:-27017}" "MongoDB"
@@ -160,6 +163,10 @@ main() {
     log SUCCESS "Container initialization complete!"
     log INFO "Starting service..."
     echo "" >&2
+
+    if [[ $# -eq 0 && -x "$(command -v apache2ctl)" ]]; then
+        set -- apache2ctl -DFOREGROUND
+    fi
 
     exec "$@"
 }

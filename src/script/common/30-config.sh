@@ -1,6 +1,3 @@
-#!/bin/bash
-set -euo pipefail
-
 # =============================================================================
 # Update configuration
 # =============================================================================
@@ -44,8 +41,8 @@ update_config() {
             key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
             local repl
             repl="$(printf '%s=%s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
-            if grep -Eq "^${key_re}=" "$file" 2>/dev/null; then
-                sed -i -E "s|^${key_re}=.*|${repl}|" "$file"
+            if grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
+                sed -i -E "s|^([[:space:]]*(export[[:space:]]+)?)${key_re}[[:space:]]*=.*|\1${repl}|" "$file"
             else
                 echo "${key}=${value}" >> "$file"
             fi

@@ -152,26 +152,26 @@ services:
       YII_DEBUG: true
       YII_ENV: test
       ENABLE_HEALTH_ENDPOINT: ${ENABLE_HEALTH_ENDPOINT:-true}
-      DB_MYSQL_HOST: mysql
-      DB_MYSQL_DATABASE: yii2_test
-      DB_MYSQL_USERNAME: yii2
-      DB_MYSQL_PASSWORD: ${DB_PASSWORD:-yii2pass}
-      DB_PGSQL_HOST: postgres
-      DB_PGSQL_DATABASE: yii2_test
-      DB_PGSQL_USERNAME: yii2
-      DB_PGSQL_PASSWORD: ${DB_PASSWORD:-yii2pass}
-      DB_MSSQL_HOST: mssql
-      DB_MSSQL_DATABASE: yii2_test
-      DB_MSSQL_USERNAME: SA
-      DB_MSSQL_PASSWORD: ${MSSQL_PASSWORD:-YourStr0ng!Passw0rd}
-      DB_ORACLE_HOST: oracle
-      DB_ORACLE_SID: XE
-      DB_ORACLE_USERNAME: yii2
-      DB_ORACLE_PASSWORD: ${ORACLE_PASSWORD:-yii2pass}
       DB_MONGODB_HOST: mongodb
-      DB_MONGODB_DATABASE: yii2_test
+      DB_MONGODB_DATABASE: yii2test
       DB_MONGODB_USERNAME: root
       DB_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongopass}
+      DB_MSSQL_HOST: mssql
+      DB_MSSQL_DATABASE: yii2test
+      DB_MSSQL_USERNAME: SA
+      DB_MSSQL_PASSWORD: ${MSSQL_PASSWORD:-YourStr0ng!Passw0rd}
+      DB_MYSQL_HOST: mysql
+      DB_MYSQL_DATABASE: yii2test
+      DB_MYSQL_USERNAME: root
+      DB_MYSQL_PASSWORD: ${DB_PASSWORD:-root}
+      DB_PGSQL_HOST: postgres
+      DB_PGSQL_DATABASE: yii2test
+      DB_PGSQL_USERNAME: postgres
+      DB_PGSQL_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_ORACLE_HOST: oracle
+      DB_ORACLE_SID: XE
+      DB_ORACLE_USERNAME: system
+      DB_ORACLE_PASSWORD: ${ORACLE_PASSWORD:-oracle}
     networks:
       - yii2-network
     depends_on:
