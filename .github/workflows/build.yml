@@ -108,5 +108,5 @@ jobs:
         fi
 
     - name: Clear old GitHub Actions caches.
-      if: ${{ matrix.build_type == 'full' }}
+      if: ${{ github.event_name == 'push' && matrix.build_type == 'full' }}
       uses: easimon/wipe-cache@main
