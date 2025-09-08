@@ -75,6 +75,8 @@ if { [ "$PHP_MAJOR" -gt 8 ] ; } || { [ "$PHP_MAJOR" -eq 8 ] && [ "$PHP_MINOR" -g
     install_oracle_extension "pdo_oci" "1.1.0"
 else
     echo "PHP < 8.4 detected, trying PHP source method..."
+    # Build prerequisites for compiling PDO_OCI against PHP sources
+    install_packages build-essential php${PHP_MAJOR}.${PHP_MINOR}-dev
     cd /tmp
     wget -q "https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz" || {
         echo "Could not download PHP source, trying PECL..."
@@ -95,6 +97,9 @@ else
         cd /tmp
         install_oracle_extension "pdo_oci" "1.1.0"
     fi
+    # Cleanup build deps after successful build
+    apt-get remove -y --purge build-essential php${PHP_MAJOR}.${PHP_MINOR}-dev \
+      && apt-get autoremove -y
 fi
 
 # Clean up

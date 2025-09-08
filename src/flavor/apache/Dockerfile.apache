@@ -155,13 +155,8 @@ RUN set -ex \
     # Install Microsoft ODBC driver
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get install -y unixodbc-dev \
-    # Install Microsoft SQL Server PHP extensions via PECL
-    && pecl channel-update pecl.php.net \
-    && pecl install sqlsrv \
-    && pecl install pdo_sqlsrv \
-    # Enable the extensions
-    && echo "extension=sqlsrv.so" > /usr/local/etc/php/conf.d/docker-php-ext-sqlsrv.ini \
-    && echo "extension=pdo_sqlsrv.so" > /usr/local/etc/php/conf.d/docker-php-ext-pdo_sqlsrv.ini \
+    # Microsoft SQL Server PHP extensions via installer (handles build deps)
+    && install-php-extensions sqlsrv pdo_sqlsrv \
     # Clean up
     && apt-get purge -y --auto-remove gnupg \
     && apt-get clean \
