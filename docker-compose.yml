@@ -10,9 +10,6 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-dev
-    depends_on:
-      - mysql
-      - redis
     environment:
       # PHP Core Configuration
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
@@ -70,9 +67,6 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-prod
-    depends_on:
-      - mysql
-      - redis
     environment:
       # PHP Core Configuration
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-30}
@@ -119,13 +113,6 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-full
-    depends_on:
-      - mysql
-      - postgres
-      - redis
-      - mongodb
-      - mssql
-      - oracle
     environment:
       # PHP Core Configuration
       PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-120}
@@ -171,6 +158,7 @@ services:
       - yii2-network
     ports:
       - "3306:3306"
+    profiles: ["dev","full"]
     volumes:
       - mysql_data:/var/lib/mysql
 
@@ -191,6 +179,7 @@ services:
       - yii2-network
     ports:
       - "5432:5432"
+    profiles: ["full"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -228,6 +217,7 @@ services:
       - yii2-network
     ports:
       - "27017:27017"
+    profiles: ["full"]
     volumes:
       - mongodb_data:/data/db
 
@@ -248,6 +238,7 @@ services:
       - yii2-network
     ports:
       - "1433:1433"
+    profiles: ["full"]
     volumes:
       - mssql_data:/var/opt/mssql
 
@@ -264,6 +255,7 @@ services:
       - yii2-network
     ports:
       - "1521:1521"
+    profiles: ["full"]
     shm_size: 1g
     volumes:
       - oracle_data:/opt/oracle/oradata
