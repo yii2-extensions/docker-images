@@ -107,3 +107,7 @@ jobs:
         else
           echo "ℹ️ Image built but not pushed (PR mode)"
         fi
+
+    - name: Clear old GitHub Actions caches.
+      if: ${{ matrix.build_type == 'full' }}
+      uses: easimon/wipe-cache@main
