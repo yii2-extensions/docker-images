@@ -21,10 +21,13 @@ install_pecl_extension() {
     local fallback_version="$2"
 
     echo "Installing PHP $extension extension..."
-    pecl install "$extension" || {
+    if ! printf "\n" | pecl install "$extension"; then
         echo "Warning: $extension installation failed, trying version $fallback_version..."
-        pecl install "$extension-$fallback_version"
-    }
+        if ! printf "\n" | pecl install "$extension-$fallback_version"; then
+            echo "Error: failed to install $extension (including fallback $fallback_version)." >&2
+            exit 1
+        fi
+    fi
 }
 
 # Install prerequisites

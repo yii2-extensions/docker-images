@@ -150,7 +150,7 @@ RUN set -ex \
     # Import the Microsoft GPG key using proper method for newer apt versions
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     # Add Microsoft repository using Debian 12 (bookworm) as Debian 13 (trixie) is not yet supported
-    && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+    && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     # Install Microsoft ODBC driver
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
@@ -186,8 +186,10 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
 # Copy Apache configurations
-COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2
-COPY src/flavor/apache/etc/apache2/conf-available/security-enhanced.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2/
+COPY src/flavor/apache/etc/apache2/conf-available/php-fpm-proxy.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/apache2/conf-available/security.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/apache2/conf-available/vhost-common.conf /etc/apache2/conf-available/
 COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
 
 # Copy PHP Configurations

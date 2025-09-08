@@ -68,6 +68,9 @@ mkdir -p runtime
 # Check for required configuration files
 REQUIRED_FILES=(
     "src/flavor/apache/etc/apache2/apache2.conf"
+    "src/flavor/apache/etc/apache2/conf-available/php-fpm-proxy.conf"
+    "src/flavor/apache/etc/apache2/conf-available/security.conf"
+    "src/flavor/apache/etc/apache2/conf-available/vhost-common.conf"
     "src/flavor/apache/etc/apache2/sites-available/vhost.conf"
     "src/php/${BUILD_TYPE}.ini"
     "src/script/entrypoint.sh"

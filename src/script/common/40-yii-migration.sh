@@ -15,6 +15,7 @@ yii_run_migrations() {
     }
 
     # Execute as www-data if we're root, otherwise run directly
+    local result=0
     if [[ "$(id -u)" == "0" ]]; then
         su www-data -s /bin/bash -c "php yii migrate --interactive=0" && result=0 || result=1
     else
