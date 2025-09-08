@@ -173,7 +173,6 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./runtime/init-sql/mysql:/docker-entrypoint-initdb.d:ro
 
   # PostgreSQL database
   postgres:
@@ -194,7 +193,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/runtime-sql/postgres:/docker-entrypoint-initdb.d:ro
 
   # Redis cache
   redis:
@@ -232,7 +230,6 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./runtime/init-js/mongo:/docker-entrypoint-initdb.d:ro
 
   # Microsoft SQL Server database
   mssql:
