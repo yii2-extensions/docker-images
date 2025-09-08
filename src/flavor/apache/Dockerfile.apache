@@ -94,7 +94,9 @@ RUN install-php-extensions \
     @composer
 
 # Enable Apache modules
-RUN a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
+RUN a2dismod mpm_prefork 2>/dev/null || true \
+    && a2enmod mpm_event \
+    && a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
 # Configure sudo for www-data to allow privilege escalation for initialization
@@ -145,7 +147,6 @@ RUN set -ex \
     && apt-get install -y --no-install-recommends \
         curl \
         gnupg \
-        apt-transport-https \
         ca-certificates \
     # Import the Microsoft GPG key using proper method for newer apt versions
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
@@ -187,9 +188,7 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
 
 # Copy Apache configurations
 COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2/
-COPY src/flavor/apache/etc/apache2/conf-available/php-fpm-proxy.conf /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/apache2/conf-available/security.conf /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/apache2/conf-available/vhost-common.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/apache2/conf-available/ /etc/apache2/conf-available/
 COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
 
 # Copy PHP Configurations
@@ -198,7 +197,7 @@ COPY src/php/ /tmp/php/
 RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini
 
 # Copy Supervisor configurations
-COPY src/supervisor/conf.d/*.conf /etc/supervisor/conf.d/
+COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
 # Copy scripts
@@ -218,6 +217,6 @@ WORKDIR /var/www/app
 EXPOSE 80 443
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f -A healthcheck http://localhost/health || exit 1
+    CMD curl -fsS -A healthcheck http://localhost/health || curl -fsS -A healthcheck http://localhost/fpm-ping || exit 1
 
 ENTRYPOINT ["entrypoint"]
