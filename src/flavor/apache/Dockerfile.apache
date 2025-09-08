@@ -207,7 +207,7 @@ COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
 # Enable site and security configurations
 RUN a2ensite yii2 \
-    && a2enconf security-enhanced \
+    && a2enconf security \
     && a2dissite 000-default 2>/dev/null || true
 
 # Make scripts executable

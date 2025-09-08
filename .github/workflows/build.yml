@@ -110,5 +110,3 @@ jobs:
 
     - name: Clear old GitHub Actions caches.
       uses: easimon/wipe-cache@main
-      with:
-        dry-run: 'true'
