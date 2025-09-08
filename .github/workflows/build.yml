@@ -107,3 +107,15 @@ jobs:
         else
           echo "ℹ️ Image built but not pushed (PR mode)"
         fi
+
+    - name: Clean old caches
+      run: |
+        # Obtener lista de caches y eliminar los más antiguos, manteniendo solo los últimos 10
+        gh api repos/${{ github.repository }}/actions/caches \
+          --jq '.actions_caches[10:] | .[].id' | \
+        while read cache_id; do
+          echo "Deleting cache ID: $cache_id"
+          gh api --method DELETE repos/${{ github.repository }}/actions/caches/$cache_id || true
+        done
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
