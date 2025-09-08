@@ -11,6 +11,7 @@ ARG PHP_VERSION=8.4
 #==============================================================================
 FROM php:${PHP_VERSION}-fpm-trixie AS base
 
+# Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     # Apache Configuration
     APACHE_ACCESS_LOG=/proc/self/fd/1 \
@@ -63,7 +64,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_START_SERVERS=5 \
     PHP_FPM_STATUS_PATH=/fpm-status
 
-# Install Apache and tools
+# Layer 1: System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
     supervisor \
@@ -73,10 +74,39 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create Apache lock directory using env variable or default path
-RUN mkdir -p ${APACHE_LOCK_DIR}
+# Layer 2: Install php-extension-installer tool
+ADD --chmod=0755 \
+    https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
+    /usr/local/bin/
 
-# Create necessary directories and set permissions
+# Layer 3: Core PHP extensions for Yii2
+RUN install-php-extensions \
+    apcu \
+    bcmath \
+    intl \
+    opcache \
+    pcntl \
+    zip \
+    imagick \
+    gd \
+    @composer \
+    --cleanup
+
+# Layer 4: Database extensions
+RUN install-php-extensions \
+    pdo_mysql \
+    pdo_pgsql \
+    redis \
+    --cleanup
+
+# Layer 5: Apache configuration
+RUN a2dismod mpm_prefork 2>/dev/null || true \
+    && a2enmod mpm_event \
+    && a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
+    && a2dissite 000-default
+
+# Layer 6: Create directories and set permissions
+RUN mkdir -p ${APACHE_LOCK_DIR}
 RUN mkdir -p \
     /etc/apache2/ssl \
     /var/cache/apache2 \
@@ -93,31 +123,7 @@ RUN mkdir -p \
     /var/run/php \
     && chmod 755 /etc/apache2/ssl /var/cache/apache2
 
-# Install install-php-extensions
-ADD --chmod=0755 \
-    https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
-    /usr/local/bin/
-
-# Install core PHP extensions
-RUN install-php-extensions \
-    apcu \
-    bcmath \
-    intl \
-    opcache \
-    pcntl \
-    pdo_mysql \
-    pdo_pgsql \
-    redis \
-    zip \
-    @composer
-
-# Enable Apache modules
-RUN a2dismod mpm_prefork 2>/dev/null || true \
-    && a2enmod mpm_event \
-    && a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
-    && a2dissite 000-default
-
-# Configure sudo for www-data to allow privilege escalation for initialization
+# Layer 7: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
     && chmod 0440 /etc/sudoers.d/www-data
 
@@ -126,17 +132,24 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
 #==============================================================================
 FROM base AS dev
 
-# Install dev extensions
+# Layer 8: Development-only extensions
 RUN install-php-extensions \
     xdebug \
-    imagick \
-    gd \
+    --cleanup
+
+# Layer 9: Additional database extensions for development
+RUN install-php-extensions \
     mongodb \
     memcached \
-    soap \
-    yaml
+    --cleanup
 
-# Install dev tools
+# Layer 10: Development utilities
+RUN install-php-extensions \
+    soap \
+    yaml \
+    --cleanup
+
+# Layer 11: Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     vim \
@@ -151,32 +164,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #==============================================================================
 FROM dev AS full
 
-# Install Oracle and SQL Server extensions
+# Layer 12: Oracle extensions
 RUN install-php-extensions \
     oci8 \
     pdo_oci \
-    tidy
+    --cleanup
 
-# Install Microsoft SQL Server ODBC driver and PHP extensions manually
+# Layer 13: Additional testing extensions
+RUN install-php-extensions \
+    tidy \
+    --cleanup
+
+# Layer 14: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
-    # Install required packages for manual installation
     && apt-get install -y --no-install-recommends \
         curl \
         gnupg \
         ca-certificates \
-    # Import the Microsoft GPG key using proper method for newer apt versions
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    # Add Microsoft repository using Debian 12 (bookworm) as Debian 13 (trixie) is not yet supported
     && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
-    # Install Microsoft ODBC driver
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get install -y unixodbc-dev \
-    # Microsoft SQL Server PHP extensions via installer (handles build deps)
-    && install-php-extensions sqlsrv pdo_sqlsrv \
-    # Clean up
+    && install-php-extensions sqlsrv pdo_sqlsrv --cleanup \
     && apt-get purge -y --auto-remove gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -186,13 +198,9 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Install only production extensions
-RUN install-php-extensions \
-    imagick \
-    gd
-
-# Remove any dev packages
-RUN apt-get purge -y --auto-remove git \
+# Production build already has all necessary extensions from base
+# Just remove any dev packages and clean up
+RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
 #==============================================================================
@@ -204,7 +212,7 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Copy Apache configurations
+# Copy configuration files (these change most frequently, so at the end)
 COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2/
 COPY src/flavor/apache/etc/apache2/conf-available/ /etc/apache2/conf-available/
 COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
@@ -212,7 +220,8 @@ COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites
 # Copy PHP Configurations
 COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 COPY src/php/ /tmp/php/
-RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini
+RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini \
+    && rm -rf /tmp/php
 
 # Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/

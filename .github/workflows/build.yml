@@ -13,7 +13,6 @@ concurrency:
 name: build
 
 env:
-  IMAGE_NAME: ${{ github.repository_owner }}/yii2-extensions
   REGISTRY: ghcr.io
 
 jobs:
@@ -68,7 +67,7 @@ jobs:
 
     - name: Build Only (PRs from Forks).
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./src/flavor/apache/Dockerfile.apache
@@ -83,7 +82,7 @@ jobs:
 
     - name: Build and Push
       if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ./src/flavor/apache/Dockerfile.apache
@@ -109,5 +108,5 @@ jobs:
         fi
 
     - name: Clear old GitHub Actions caches.
-      if: ${{ matrix.build_type == 'full' }}
+      if: ${{ github.event_name == 'push' && matrix.build_type == 'full' }}
       uses: easimon/wipe-cache@main

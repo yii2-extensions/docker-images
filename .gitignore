@@ -5,6 +5,10 @@
 /vendor
 /composer.lock
 
+# dev files
+build.sh
+docker-compose.yml
+
 #node_modules
 /node_modules
 
