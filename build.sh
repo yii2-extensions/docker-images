@@ -76,13 +76,6 @@ REQUIRED_FILES=(
     "src/script/entrypoint.sh"
 )
 
-if [ "$BUILD_TYPE" = "full" ]; then
-    REQUIRED_FILES+=(
-        "src/script/install-oracle.sh"
-        "src/script/install-mssql.sh"
-    )
-fi
-
 if [ "$BUILD_TYPE" = "dev" ] || [ "$BUILD_TYPE" = "full" ]; then
     REQUIRED_FILES+=("src/php/xdebug.ini")
 fi

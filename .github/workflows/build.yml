@@ -109,4 +109,5 @@ jobs:
         fi
 
     - name: Clear old GitHub Actions caches.
+      if: ${{ matrix.build_type == 'full' }}
       uses: easimon/wipe-cache@main
