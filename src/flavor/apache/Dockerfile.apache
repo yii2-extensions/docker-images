@@ -12,31 +12,44 @@ ARG PHP_VERSION=8.4
 FROM php:${PHP_VERSION}-fpm-trixie AS base
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    # Apache Configuration
+    APACHE_ACCESS_LOG=/proc/self/fd/1 \
+    APACHE_DOCUMENT_ROOT=/var/www/app/web \
+    APACHE_ERROR_LOG_FILE=/proc/self/fd/2 \
+    APACHE_LOCK_DIR=/var/lock/apache2 \
+    APACHE_PID_FILE=/var/run/apache2/apache2.pid \
+    APACHE_RUN_DIR=/var/run/apache2 \
+    APACHE_RUN_GROUP=www-data \
+    APACHE_RUN_USER=www-data \
     # GD configuration
     IPE_GD_WITHOUTAVIF=1 \
-    # PHP Configuration
-    PHP_CATCH_OUTPUT=yes \
-    PHP_DATE_TIMEZONE=UTC \
-    PHP_DEFAULT_SOCKET_TIMEOUT=60 \
-    PHP_DISABLE_FUNCTIONS=exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source \
-    PHP_DISPLAY_ERRORS=off \
-    PHP_DISPLAY_STARTUP_ERRORS=off \
-    PHP_ERROR_REPORTING="E_ALL & ~E_DEPRECATED" \
-    PHP_EXPOSE=off \
-    PHP_LOG_ERRORS=on \
+    # PHP Core Configuration
     PHP_MAX_EXECUTION_TIME=30 \
     PHP_MAX_FILE_UPLOADS=20 \
     PHP_MAX_INPUT_TIME=60 \
+    PHP_MAX_INPUT_VARS=1000 \
     PHP_MEMORY_LIMIT=256M \
     PHP_POST_MAX_SIZE=50M \
-    PHP_REQUEST_TIMEOUT=30 \
-    PHP_RLIMIT_FILES=131072 \
+    PHP_UPLOAD_MAX_FILESIZE=50M \
+    # PHP Error Configuration
+    PHP_DISPLAY_ERRORS=off \
+    PHP_DISPLAY_STARTUP_ERRORS=off \
+    PHP_ERROR_LOG=/proc/self/fd/2 \
+    PHP_ERROR_REPORTING="E_ALL & ~E_DEPRECATED" \
+    PHP_EXPOSE=off \
+    PHP_LOG_ERRORS=on \
+    # PHP Security Configuration
+    PHP_ALLOW_URL_FOPEN=off \
+    PHP_ALLOW_URL_INCLUDE=off \
+    PHP_DATE_TIMEZONE=UTC \
+    PHP_DISABLE_FUNCTIONS=exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source \
+    # PHP Session Configuration
     PHP_SESSION_HANDLER=files \
     PHP_SESSION_PATH=/var/lib/php/sessions \
-    PHP_SLOWLOG_TIMEOUT=5s \
-    PHP_UPLOAD_MAX_FILESIZE=50M \
     # PHP-FPM Configuration
     PHP_FPM_ACCESS_LOG=/proc/self/fd/1 \
+    PHP_FPM_CATCH_OUTPUT=yes \
+    PHP_FPM_IDLE_TIMEOUT=10s \
     PHP_FPM_LOG_LEVEL=warning \
     PHP_FPM_MAX_CHILDREN=50 \
     PHP_FPM_MAX_REQUESTS=500 \
@@ -44,6 +57,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_MIN_SPARE=5 \
     PHP_FPM_PING_PATH=/fpm-ping \
     PHP_FPM_PM=dynamic \
+    PHP_FPM_REQUEST_TIMEOUT=30 \
+    PHP_FPM_RLIMIT_FILES=131072 \
+    PHP_FPM_SLOWLOG_TIMEOUT=5s \
     PHP_FPM_START_SERVERS=5 \
     PHP_FPM_STATUS_PATH=/fpm-status
 
@@ -57,6 +73,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create Apache lock directory using env variable or default path
+RUN mkdir -p ${APACHE_LOCK_DIR}
+
 # Create necessary directories and set permissions
 RUN mkdir -p \
     /etc/apache2/ssl \
@@ -69,7 +88,6 @@ RUN mkdir -p \
     && chown -R www-data:www-data \
     /etc/apache2/ssl \
     /var/cache/apache2 \
-    /var/lock/apache2 \
     /var/run/apache2 \
     /var/lib/php \
     /var/run/php \

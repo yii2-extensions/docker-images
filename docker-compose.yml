@@ -10,64 +10,54 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-dev
-    hostname: yii2-dev
-    image: yii2-apache:${PHP_VERSION:-8.4}-debian-dev
-    user: www-data
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
-    volumes:
-      # Application code
-      - ./app:/var/www/app:delegated
-      - ./app/web/assets:/var/www/app/web/assets:delegated
-      # Composer cache
-      - composer_cache:/var/www/.composer:delegated
-      # NPM cache (for foxy)
-      - npm_cache:/var/www/.npm:delegated
-      # Separate node_modules to avoid host/container conflicts
-      - node_modules:/var/www/app/node_modules:delegated
-      # Vendor directory for faster installs
-      - vendor:/var/www/app/vendor:delegated
-      # Runtime directories
-      - ./runtime/ssl:/etc/apache2/ssl
-      - ./runtime:/var/www/app/runtime:delegated
-    environment:
-      # Apache
-      APACHE_DOCUMENT_ROOT: /var/www/app/web
-      # PHP
-      PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
-      PHP_DISPLAY_ERRORS: ${PHP_DISPLAY_ERRORS:-on}
-      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
-      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-100M}
-      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-100M}
-      # Xdebug
-      XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
-      XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
-      XDEBUG_PORT: ${XDEBUG_PORT:-9003}
-      # Composer
-      COMPOSER_ALLOW_SUPERUSER: 1
-      COMPOSER_MEMORY_LIMIT: -1
-      # Application
-      YII_DEBUG: ${YII_DEBUG:-true}
-      YII_ENV: ${YII_ENV:-dev}
-      # Health endpoint
-      ENABLE_HEALTH_ENDPOINT: ${ENABLE_HEALTH_ENDPOINT:-true}
-    networks:
-      - yii2-network
     depends_on:
       - mysql
       - redis
+    environment:
+      # PHP Core Configuration
+      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-60}
+      PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
+      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-100M}
+      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-100M}
+      # PHP Error Configuration
+      PHP_DISPLAY_ERRORS: ${PHP_DISPLAY_ERRORS:-on}
+      # Yii2 Configuration
+      YII_DEBUG: ${YII_DEBUG:-true}
+      YII_ENV: ${YII_ENV:-dev}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 40s
+    hostname: yii2-dev
+    image: yii2-apache:${PHP_VERSION:-8.4}-debian-dev
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "8080:80"
+      - "8443:443"
+    profiles: ["dev"]
+    user: www-data
+    volumes:
+      # Application code
+      - ./app:/var/www/app
+      - ./app/web/assets:/var/www/app/web/assets
+      # Composer cache
+      - composer_cache:/var/www/.composer
+      # NPM cache (for foxy)
+      - npm_cache:/var/www/.npm
+      # Separate node_modules to avoid host/container conflicts
+      - node_modules:/var/www/app/node_modules
+      # Vendor directory for faster installs
+      - vendor:/var/www/app/vendor
+      # Runtime directories
+      - ./runtime:/var/www/app/runtime
 
   # Production configuration
   yii2-prod:
@@ -77,45 +67,46 @@ services:
         BUILD_TYPE: prod
       context: .
       dockerfile: ./src/flavor/apache/Dockerfile.apache
-    image: yii2-apache:${PHP_VERSION:-8.4}-debian-prod
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-prod
-    user: www-data
-    profiles: ["prod"]
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
-    volumes:
-      - ./app/web/assets:/var/www/app/web/assets:delegated
-      - ./app:/var/www/app:delegated
-      - ./runtime:/var/www/app/runtime:delegated
-    environment:
-      APACHE_DOCUMENT_ROOT: /var/www/app/web
-      PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}
-      PHP_DISPLAY_ERRORS: off
-      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-30}
-      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-50M}
-      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-50M}
-      YII_DEBUG: false
-      YII_ENV: prod
-      ENABLE_HEALTH_ENDPOINT: ${ENABLE_HEALTH_ENDPOINT:-true}
-    networks:
-      - yii2-network
     depends_on:
       - mysql
       - redis
+    environment:
+      # PHP Core Configuration
+      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-30}
+      PHP_MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-256M}
+      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-50M}
+      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-50M}
+      # Yii2 Configuration
+      YII_DEBUG: false
+      YII_ENV: prod
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 40s
+    image: yii2-apache:${PHP_VERSION:-8.4}-debian-prod
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "5"
+    networks:
+      - yii2-network
+    ports:
+      - "8080:80"
+      - "8443:443"
+    profiles: ["prod"]
+    user: www-data
+    volumes:
+      # Application code
+      - ./app:/var/www/app
+      - ./app/web/assets:/var/www/app/web/assets
+      # Runtime directories
+      - ./runtime:/var/www/app/runtime
 
   # Full testing configuration
   yii2-full:
@@ -125,54 +116,9 @@ services:
         BUILD_TYPE: full
       context: .
       dockerfile: ./src/flavor/apache/Dockerfile.apache
-    image: yii2-apache:${PHP_VERSION:-8.4}-debian-full
     cap_add:
       - NET_BIND_SERVICE
     container_name: yii2-full
-    user: www-data
-    profiles: ["test", "full"]
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
-    volumes:
-      - ./app:/var/www/app:delegated
-      - composer_cache:/var/www/.composer:delegated
-      - npm_cache:/var/www/.npm:delegated
-      - node_modules:/var/www/app/node_modules:delegated
-      - vendor:/var/www/app/vendor:delegated
-    environment:
-      APACHE_DOCUMENT_ROOT: /var/www/app/web
-      PHP_MEMORY_LIMIT: 1G
-      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-120}
-      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-200M}
-      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-200M}
-      XDEBUG_ENABLED: true
-      XDEBUG_MODE: coverage
-      YII_DEBUG: true
-      YII_ENV: test
-      ENABLE_HEALTH_ENDPOINT: ${ENABLE_HEALTH_ENDPOINT:-true}
-      DB_MONGODB_HOST: mongodb
-      DB_MONGODB_DATABASE: yiitest
-      DB_MONGODB_USERNAME: root
-      DB_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongopass}
-      DB_MSSQL_HOST: mssql
-      DB_MSSQL_DATABASE: yiitest
-      DB_MSSQL_USERNAME: SA
-      DB_MSSQL_PASSWORD: ${MSSQL_PASSWORD:-YourStr0ng!Passw0rd}
-      DB_MYSQL_HOST: mysql
-      DB_MYSQL_DATABASE: yiitest
-      DB_MYSQL_USERNAME: root
-      DB_MYSQL_PASSWORD: ${DB_PASSWORD:-root}
-      DB_PGSQL_HOST: postgres
-      DB_PGSQL_DATABASE: yiitest
-      DB_PGSQL_USERNAME: postgres
-      DB_PGSQL_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_ORACLE_HOST: oracle
-      DB_ORACLE_SID: XE
-      DB_ORACLE_USERNAME: system
-      DB_ORACLE_PASSWORD: ${ORACLE_PASSWORD:-oracle}
-    networks:
-      - yii2-network
     depends_on:
       - mysql
       - postgres
@@ -180,132 +126,150 @@ services:
       - mongodb
       - mssql
       - oracle
-    # MEJORA CRÍTICA: Configuración de logging para testing
+    environment:
+      # PHP Core Configuration
+      PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-120}
+      PHP_MEMORY_LIMIT: 1G
+      PHP_POST_MAX_SIZE: ${PHP_POST_MAX_SIZE:-200M}
+      PHP_UPLOAD_MAX_FILESIZE: ${PHP_UPLOAD_MAX_FILESIZE:-200M}
+      # Yii2 Configuration
+      YII_DEBUG: true
+      YII_ENV: test
+    image: yii2-apache:${PHP_VERSION:-8.4}-debian-full
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
         max-file: "5"
+    networks:
+      - yii2-network
+    profiles: ["full"]
+    ports:
+      - "8080:80"
+      - "8443:443"
+    user: www-data
+    volumes:
+      - ./app:/var/www/app:delegated
+      - composer_cache:/var/www/.composer:delegated
+      - npm_cache:/var/www/.npm:delegated
+      - node_modules:/var/www/app/node_modules:delegated
+      - vendor:/var/www/app/vendor:delegated
 
-  # MySQL Database
+  # MySQL database
   mysql:
     image: mysql:8.0
     container_name: yii2-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: yiitest
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./runtime/init-sql/mysql:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "${MYSQL_PORT:-3306}:3306"
-    networks:
-      - yii2-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # PostgreSQL Database
+  # PostgreSQL database
   postgres:
     image: postgres:16
     container_name: yii2-postgres
-    profiles: ["full", "test", "postgres"]
     environment:
       POSTGRES_DB: yiitest
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./src/runtime-sql/postgres:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    networks:
-      - yii2-network
+      POSTGRES_PASSWORD: postgres
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/runtime-sql/postgres:/docker-entrypoint-initdb.d:ro
 
-  # Redis Cache
+  # Redis cache
   redis:
     image: redis:7-alpine
     container_name: yii2-redis
     command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    networks:
-      - yii2-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
-  # MongoDB
+  # MongoDB database
   mongodb:
     image: mongo:7
     container_name: yii2-mongodb
-    profiles: ["full", "test", "mongodb"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongopass}
       MONGO_INITDB_DATABASE: yii2
-    volumes:
-      - mongodb_data:/data/db
-      - ./runtime/init-js/mongo:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "${MONGODB_PORT:-27017}:27017"
-    networks:
-      - yii2-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./runtime/init-js/mongo:/docker-entrypoint-initdb.d:ro
 
-  # Microsoft SQL Server
+  # Microsoft SQL Server database
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: yii2-mssql
-    profiles: ["full", "test", "mssql"]
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: ${MSSQL_PASSWORD:-YourStr0ng!Passw0rd}
       MSSQL_PID: Developer
-    volumes:
-      - mssql_data:/var/opt/mssql
-    ports:
-      - "${MSSQL_PORT:-1433}:1433"
-    networks:
-      - yii2-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
 
-  # Oracle Database
+  # Oracle database
   oracle:
     image: wnameless/oracle-xe-11g-r2:latest
     container_name: yii2-oracle
-    profiles: ["full", "test", "oracle"]
-    volumes:
-      - oracle_data:/opt/oracle/oradata
-    ports:
-      - "${ORACLE_PORT:-1521}:1521"
-    networks:
-      - yii2-network
-    shm_size: 1g
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - yii2-network
+    ports:
+      - "1521:1521"
+    shm_size: 1g
+    volumes:
+      - oracle_data:/opt/oracle/oradata
 
 networks:
   yii2-network:
