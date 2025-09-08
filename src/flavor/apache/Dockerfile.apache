@@ -185,12 +185,17 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Copy configurations
-COPY src/flavor/apache/etc/apache2.conf /etc/apache2/apache2.conf
-COPY src/flavor/apache/etc/security-enhanced.conf /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/vhost.conf /etc/apache2/sites-available/yii2.conf
+# Copy Apache configurations
+COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2
+COPY src/flavor/apache/etc/apache2/conf-available/security-enhanced.conf /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
+
+# Copy PHP Configurations
 COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
-COPY src/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
+COPY src/php/ /tmp/php/
+RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini
+
+# Copy Supervisor configurations
 COPY src/supervisor/conf.d/*.conf /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
