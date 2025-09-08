@@ -25,7 +25,7 @@ if [[ ! -f "$SSL_CERT" ]] || [[ ! -f "$SSL_KEY" ]]; then
     # Generate private key
     if ! openssl genrsa -out "$SSL_KEY" 2048 2>/dev/null; then
         log WARNING "Failed to generate private key, SSL will be disabled"
-        return 0
+        return 0 2>/dev/null || exit 0
     fi
 
     # Generate self-signed certificate (simplified for compatibility)
@@ -34,7 +34,7 @@ if [[ ! -f "$SSL_CERT" ]] || [[ ! -f "$SSL_KEY" ]]; then
         2>/dev/null; then
         log WARNING "Failed to generate certificate, SSL will be disabled"
         rm -f "$SSL_KEY" 2>/dev/null || true
-        return 0
+        return 0 2>/dev/null || exit 0
     fi
 
     # Set proper permissions
