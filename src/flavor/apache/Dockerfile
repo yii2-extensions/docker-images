@@ -63,7 +63,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_RLIMIT_FILES=131072 \
     PHP_FPM_SLOWLOG_TIMEOUT=5s \
     PHP_FPM_START_SERVERS=5 \
-    PHP_FPM_STATUS_PATH=/fmp-status \
+    PHP_FPM_STATUS_PATH=/fpm-status \
     # SSL Configuration
     SSL_AUTO_GENERATE=true
 
@@ -80,8 +80,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Layer 2: Install Node.js LTS (for asset building)
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+# Layer 2: Install Node.js for asset building
+ARG NODE_MAJOR=20
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
