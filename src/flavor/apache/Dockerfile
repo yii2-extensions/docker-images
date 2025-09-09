@@ -63,26 +63,35 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_RLIMIT_FILES=131072 \
     PHP_FPM_SLOWLOG_TIMEOUT=5s \
     PHP_FPM_START_SERVERS=5 \
-    PHP_FPM_STATUS_PATH=/fpm-status \
+    PHP_FPM_STATUS_PATH=/fmp-status \
     # SSL Configuration
     SSL_AUTO_GENERATE=true
 
-# Layer 1: System packages
+# Layer 1: System packages + gosu
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
     supervisor \
     curl \
     openssl \
     sudo \
+    gosu \
+    ca-certificates \
+    gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Layer 2: Install php-extension-installer tool
+# Layer 2: Install Node.js LTS (for asset building)
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 3: Install php-extension-installer tool
 ADD --chmod=0755 \
     https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     /usr/local/bin/
 
-# Layer 3: Core PHP extensions for Yii2
+# Layer 4: Core PHP extensions for Yii2
 RUN install-php-extensions \
     apcu \
     bcmath \
@@ -95,20 +104,20 @@ RUN install-php-extensions \
     @composer \
     --cleanup
 
-# Layer 4: Database extensions
+# Layer 5: Database extensions
 RUN install-php-extensions \
     pdo_mysql \
     pdo_pgsql \
     redis \
     --cleanup
 
-# Layer 5: Apache configuration
+# Layer 6: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2enmod mpm_event \
     && a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
-# Layer 6: Create directories and set permissions
+# Layer 7: Create directories and set permissions
 RUN mkdir -p \
     ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
@@ -117,16 +126,20 @@ RUN mkdir -p \
     /var/lib/php/tmp \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.composer/cache \
+    /var/www/.npm \
     && chown -R www-data:www-data \
     /etc/apache2/ssl \
     /var/cache/apache2 \
     /var/lib/php \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.composer \
+    /var/www/.npm \
     && chmod 750 /etc/apache2/ssl \
     && chmod 755 /var/cache/apache2
 
-# Layer 7: Configure sudo for www-data
+# Layer 8: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
     && chmod 0440 /etc/sudoers.d/www-data
 
@@ -135,24 +148,24 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
 #==============================================================================
 FROM base AS dev
 
-# Layer 8: Development-only extensions
+# Layer 9: Development-only extensions
 RUN install-php-extensions \
     xdebug \
     --cleanup
 
-# Layer 9: Additional database extensions for development
+# Layer 10: Additional database extensions for development
 RUN install-php-extensions \
     mongodb \
     memcached \
     --cleanup
 
-# Layer 10: Development utilities
+# Layer 11: Development utilities
 RUN install-php-extensions \
     soap \
     yaml \
     --cleanup
 
-# Layer 11: Development tools
+# Layer 12: Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     vim \
@@ -167,18 +180,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #==============================================================================
 FROM dev AS full
 
-# Layer 12: Oracle extensions
+# Layer 13: Oracle extensions
 RUN install-php-extensions \
     oci8 \
     pdo_oci \
     --cleanup
 
-# Layer 13: Additional testing extensions
+# Layer 14: Additional testing extensions
 RUN install-php-extensions \
     tidy \
     --cleanup
 
-# Layer 14: Microsoft SQL Server support
+# Layer 15: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
@@ -201,7 +214,7 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Production build already has all necessary extensions from base
+# Layer 16: Production build already has all necessary extensions from base
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -214,32 +227,32 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Copy Apache configuration files
+# Layer 17: Copy Apache configuration files
 COPY src/flavor/apache/etc/apache2.conf /etc/apache2/
 COPY src/flavor/apache/etc/conf-available/ /etc/apache2/conf-available/
 COPY src/flavor/apache/etc/sites-available/ /etc/apache2/sites-available/
 COPY src/flavor/apache/etc/ssl/ /etc/apache2/ssl/
 
-# Copy PHP Configurations
+# Layer 18: Copy PHP Configurations
 COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 COPY src/php/ /tmp/php/
 RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini \
     && rm -rf /tmp/php
 
-# Copy Supervisor configurations
+# Layer 19: Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
-# Copy scripts
+# Layer 20: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Enable only security configuration
+# Layer 21: Enable only security configuration
 # Site selection will be done dynamically by 30-ssl.sh script
 RUN a2enconf security php-fpm-proxy \
     && a2dissite 000-default 2>/dev/null || true
 
-# Make scripts executable
+# Layer 22: Make scripts executable
 RUN chmod +x /usr/local/bin/entrypoint
 
 WORKDIR /var/www/app
