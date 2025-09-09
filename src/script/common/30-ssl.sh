@@ -2,12 +2,9 @@
 # SSL setup for Apache with HTTP/2 support
 #==============================================================================
 
-# Load logging functions from system
-source /usr/local/bin/common/10-log.sh
-
 # Check if SSL is disabled
-if [[ "${SSL_ENABLED:-true}" != "true" ]]; then
-    log INFO "SSL is disabled via SSL_ENABLED=false"
+if [[ "${APACHE_SSL_ENABLED:-true}" != "true" ]]; then
+    log INFO "SSL is disabled via APACHE_SSL_ENABLED=false"
 
     return 0 2>/dev/null || exit 0
 fi
@@ -17,14 +14,6 @@ SSL_DIR="${SSL_DIR:-/etc/apache2/ssl}"
 SSL_CERT_FILE="${SSL_CERT_FILE:-${SSL_DIR}/cert.pem}"
 SSL_KEY_FILE="${SSL_KEY_FILE:-${SSL_DIR}/key.pem}"
 SSL_AUTO_GENERATE="${SSL_AUTO_GENERATE:-true}"
-
-# Enable SSL in Apache (append to existing APACHE_ARGUMENTS)
-echo "export APACHE_ARGUMENTS=\"\${APACHE_ARGUMENTS} -D SSL_ENABLED\"" >> /etc/apache2/envvars
-
-# Optional: Enable HTTP to HTTPS redirect
-if [[ "${SSL_REDIRECT:-false}" == "true" ]]; then
-    echo "export APACHE_ARGUMENTS=\"\${APACHE_ARGUMENTS} -D SSL_REDIRECT\"" >> /etc/apache2/envvars
-fi
 
 # Create SSL directory
 if [[ ! -d "$SSL_DIR" ]]; then
@@ -61,17 +50,8 @@ if [[ -f "$SSL_CERT_FILE" ]] && [[ -f "$SSL_KEY_FILE" ]]; then
     fi
 
 elif [[ "$SSL_AUTO_GENERATE" == "true" ]]; then
-    # DISABLE_OCSP stapling for self-signed certificates unless explicitly enabled
-    local DISABLE_OCSP="${DISABLE_OCSP_STAPLING:-true}"
     # Set SSL_CONFIG path
-    local SSL_CONFIG="${SSL_DIR}/openssl.conf"
-
-    # Set DISABLE_OCSP based on environment variables
-    if [[ "$DISABLE_OCSP" == "true" ]]; then
-        echo "export APACHE_ARGUMENTS=\"\${APACHE_ARGUMENTS} -D DISABLE_OCSP_STAPLING\"" >> /etc/apache2/envvars
-
-        log INFO "OCSP stapling disabled for self-signed certificate"
-    fi
+    SSL_CONFIG="${SSL_DIR}/openssl.conf"
 
     # Generate self-signed certificates if they don't exist
     log INFO "Generating self-signed SSL certificates for HTTP/2..."

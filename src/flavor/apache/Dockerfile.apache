@@ -22,6 +22,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     APACHE_RUN_DIR=/var/run/apache2 \
     APACHE_RUN_GROUP=www-data \
     APACHE_RUN_USER=www-data \
+    APACHE_SSL_ENABLED=true \
     # GD configuration
     IPE_GD_WITHOUTAVIF=1 \
     # PHP Core Configuration
@@ -63,9 +64,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_SLOWLOG_TIMEOUT=5s \
     PHP_FPM_START_SERVERS=5 \
     PHP_FPM_STATUS_PATH=/fpm-status \
-    # SSL Configuration - NEW
-    SSL_AUTO_GENERATE=true \
-    SSL_ENABLED=true
+    # SSL Configuration
+    SSL_AUTO_GENERATE=true
 
 # Layer 1: System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -213,6 +213,18 @@ FROM ${BUILD_TYPE} AS final
 ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
+
+# Set APACHE_ARGUMENTS based on APACHE_SSL_ENABLED and SSL_AUTO_GENERATE
+RUN if [ "${APACHE_SSL_ENABLED:-true}" = "true" ]; then \
+        APACHE_ARGS="-D APACHE_SSL_ENABLED"; \
+        if [ "${APACHE_SSL_REDIRECT:-true}" = "true" ]; then \
+            APACHE_ARGS="$APACHE_ARGS -D APACHE_SSL_REDIRECT"; \
+        fi; \
+        if [ "${SSL_AUTO_GENERATE:-true}" = "true" ]; then \
+            APACHE_ARGS="$APACHE_ARGS -D APACHE_DISABLE_OCSP_STAPLING"; \
+        fi; \
+        echo "export APACHE_ARGUMENTS=\"${APACHE_ARGS}\"" >> /etc/apache2/envvars; \
+    fi
 
 # Copy Apache configuration files
 COPY src/flavor/apache/etc/apache2.conf /etc/apache2/
