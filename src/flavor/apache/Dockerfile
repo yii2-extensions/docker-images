@@ -22,6 +22,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     APACHE_RUN_DIR=/var/run/apache2 \
     APACHE_RUN_GROUP=www-data \
     APACHE_RUN_USER=www-data \
+    APACHE_SSL_ENABLED=true \
     # GD configuration
     IPE_GD_WITHOUTAVIF=1 \
     # PHP Core Configuration
@@ -62,7 +63,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PHP_FPM_RLIMIT_FILES=131072 \
     PHP_FPM_SLOWLOG_TIMEOUT=5s \
     PHP_FPM_START_SERVERS=5 \
-    PHP_FPM_STATUS_PATH=/fpm-status
+    PHP_FPM_STATUS_PATH=/fpm-status \
+    # SSL Configuration
+    SSL_AUTO_GENERATE=true
 
 # Layer 1: System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -106,22 +109,22 @@ RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2dissite 000-default
 
 # Layer 6: Create directories and set permissions
-RUN mkdir -p ${APACHE_LOCK_DIR}
 RUN mkdir -p \
+    ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
+    /etc/apache2/ssl/external \
     /var/cache/apache2 \
-    /var/lock/apache2 \
-    /var/run/apache2 \
-    /var/run/php \
     /var/lib/php/sessions \
     /var/lib/php/tmp \
+    /var/run/apache2 \
+    /var/run/php \
     && chown -R www-data:www-data \
     /etc/apache2/ssl \
     /var/cache/apache2 \
-    /var/run/apache2 \
     /var/lib/php \
+    /var/run/apache2 \
     /var/run/php \
-    && chmod 755 /etc/apache2/ssl /var/cache/apache2
+    && chmod 755 /etc/apache2/ssl /var/cache/apache2 /etc/apache2/ssl/external
 
 # Layer 7: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
@@ -199,7 +202,6 @@ RUN set -ex \
 FROM base AS prod
 
 # Production build already has all necessary extensions from base
-# Just remove any dev packages and clean up
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -212,10 +214,11 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Copy configuration files (these change most frequently, so at the end)
-COPY src/flavor/apache/etc/apache2/apache2.conf /etc/apache2/
-COPY src/flavor/apache/etc/apache2/conf-available/ /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/apache2/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
+# Copy Apache configuration files
+COPY src/flavor/apache/etc/apache2.conf /etc/apache2/
+COPY src/flavor/apache/etc/conf-available/ /etc/apache2/conf-available/
+COPY src/flavor/apache/etc/sites-available/ /etc/apache2/sites-available/
+COPY src/flavor/apache/etc/ssl/ /etc/apache2/ssl/
 
 # Copy PHP Configurations
 COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
@@ -231,9 +234,9 @@ COPY src/supervisor/supervisord.conf /etc/supervisor/
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Enable site and security configurations
-RUN a2ensite yii2 \
-    && a2enconf security \
+# Enable only security configuration
+# Site selection will be done dynamically by 30-ssl.sh script
+RUN a2enconf security php-fpm-proxy \
     && a2dissite 000-default 2>/dev/null || true
 
 # Make scripts executable
