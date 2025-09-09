@@ -1,7 +1,5 @@
 on:
   pull_request:
-    branches:
-      - main
     paths-ignore:
       - 'docs/**'
       - 'README.md'
@@ -70,8 +68,7 @@ jobs:
           echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
         fi
 
-    - name: Build Only (PRs from Forks).
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+    - name: Build Only.
       uses: docker/build-push-action@v6
       with:
         context: .
