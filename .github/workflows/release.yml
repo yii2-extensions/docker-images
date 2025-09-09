@@ -9,9 +9,14 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: release-${{ github.ref || github.event.inputs.version }}
+  cancel-in-progress: true
+
 name: release
 
 env:
+  PHP_VERSION: '8.4'
   REGISTRY: ghcr.io
 
 jobs:
@@ -77,19 +82,24 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Compute build metadata.
+      id: meta
+      run: |
+        echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
     - name: Prepare tags.
       id: tags
       run: |
         BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
         VERSION="${{ needs.validate-version.outputs.version }}"
         BUILD_TYPE="${{ matrix.build_type }}"
-        PHP_VERSION="8.4"
+        PHP_VERSION="${{ env.PHP_VERSION }}"
 
         # Main tags with version
         TAGS="${BASE_NAME}:${VERSION}-${BUILD_TYPE}"
         TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
 
-        # Latest tag for prod on main branch
+        # Latest tag for prod on version tags
         if [[ "$BUILD_TYPE" == "prod" && "${{ github.ref }}" == refs/tags/v* ]]; then
           TAGS="${TAGS},${BASE_NAME}:latest"
           TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-latest"
@@ -108,14 +118,14 @@ jobs:
       with:
         context: .
         file: ./src/flavor/apache/Dockerfile
-        push: ${{ needs.validate-version.outputs.should_build == 'true' }}
+        push: true
         tags: ${{ steps.tags.outputs.tags }}
         build-args: |
           BUILD_TYPE=${{ matrix.build_type }}
-          PHP_VERSION=8.4
+          PHP_VERSION=${{ env.PHP_VERSION }}
           VERSION=${{ needs.validate-version.outputs.version }}
         labels: |
+          org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
-          org.opencontainers.image.created=${{ github.event.repository.updated_at }}
         cache-from: type=gha,scope=${{ matrix.build_type }}
         cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
