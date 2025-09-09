@@ -123,7 +123,8 @@ RUN mkdir -p \
     /var/lib/php \
     /var/run/apache2 \
     /var/run/php \
-    && chmod 755 /etc/apache2/ssl /var/cache/apache2
+    && chmod 750 /etc/apache2/ssl \
+    && chmod 755 /var/cache/apache2
 
 # Layer 7: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
