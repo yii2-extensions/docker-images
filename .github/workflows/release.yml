@@ -1,0 +1,135 @@
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (for example, 1.0.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.version }}
+  cancel-in-progress: true
+
+name: release
+
+env:
+  PHP_VERSION: '8.4'
+  REGISTRY: ghcr.io
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      should_build: ${{ steps.version.outputs.should_build }}
+    steps:
+    - name: Extract version.
+      id: version
+      env:
+        INPUT_VERSION: ${{ github.event.inputs.version }}
+      run: |
+        set -Eeuo pipefail
+        VERSION=""
+        SHOULD_BUILD="false"
+
+        # From tag
+        if [[ "${GITHUB_REF_NAME:-}" == v* ]]; then
+          VERSION="${GITHUB_REF_NAME#v}"
+          SHOULD_BUILD="true"
+        # From workflow dispatch
+        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="$INPUT_VERSION"
+          SHOULD_BUILD="true"
+        fi
+
+        # Validate semantic version
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+          printf 'should_build=%s\n' "$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
+          echo "✅ Valid version: $VERSION"
+        else
+          echo "should_build=false" >> "$GITHUB_OUTPUT"
+          echo "⚠️ No valid version found"
+        fi
+
+  build:
+    needs: validate-version
+    if: needs.validate-version.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [dev, full, prod]
+
+    steps:
+    - name: Checkout.
+      uses: actions/checkout@v5
+
+    - name: Setup Docker Buildx.
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to GitHub Container Registry.
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compute build metadata.
+      id: meta
+      run: |
+        echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+    - name: Prepare tags.
+      id: tags
+      run: |
+        set -Eeuo pipefail
+        BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
+        VERSION="${{ needs.validate-version.outputs.version }}"
+        BUILD_TYPE="${{ matrix.build_type }}"
+        PHP_VERSION="${{ env.PHP_VERSION }}"
+
+        # Main tags with version
+        TAGS="${BASE_NAME}:${VERSION}-${BUILD_TYPE}"
+        TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
+
+        # Latest tag for prod on version tags or validated manual releases
+        if [[ "$BUILD_TYPE" == "prod" && ( "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
+          TAGS="${TAGS},${BASE_NAME}:latest"
+          TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-latest"
+        fi
+
+        # Build type latest
+        if [[ "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          TAGS="${TAGS},${BASE_NAME}:${BUILD_TYPE}-latest"
+        fi
+
+        printf 'tags=%s\n' "$TAGS" >> "$GITHUB_OUTPUT"
+        echo "📦 Tags: $TAGS"
+
+    - name: Build and Push.
+      uses: docker/build-push-action@v6
+      with:
+        build-args: |
+          BUILD_TYPE=${{ matrix.build_type }}
+          PHP_VERSION=${{ env.PHP_VERSION }}
+          VERSION=${{ needs.validate-version.outputs.version }}
+        cache-from: type=gha,scope=${{ matrix.build_type }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
+        context: .
+        file: ./src/flavor/apache/Dockerfile
+        labels: |
+          org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+          org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
+        provenance: true
+        push: true
+        sbom: true
+        tags: ${{ steps.tags.outputs.tags }}
