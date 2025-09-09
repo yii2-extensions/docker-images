@@ -214,22 +214,10 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Set APACHE_ARGUMENTS based on APACHE_SSL_ENABLED and SSL_AUTO_GENERATE
-RUN if [ "${APACHE_SSL_ENABLED:-true}" = "true" ]; then \
-        APACHE_ARGS="-D APACHE_SSL_ENABLED"; \
-        if [ "${APACHE_SSL_REDIRECT:-true}" = "true" ]; then \
-            APACHE_ARGS="$APACHE_ARGS -D APACHE_SSL_REDIRECT"; \
-        fi; \
-        if [ "${SSL_AUTO_GENERATE:-true}" = "true" ]; then \
-            APACHE_ARGS="$APACHE_ARGS -D APACHE_DISABLE_OCSP_STAPLING"; \
-        fi; \
-        echo "export APACHE_ARGUMENTS=\"${APACHE_ARGS}\"" >> /etc/apache2/envvars; \
-    fi
-
 # Copy Apache configuration files
 COPY src/flavor/apache/etc/apache2.conf /etc/apache2/
 COPY src/flavor/apache/etc/conf-available/ /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/sites-available/vhost.conf /etc/apache2/sites-available/yii2.conf
+COPY src/flavor/apache/etc/sites-available/ /etc/apache2/sites-available/
 COPY src/flavor/apache/etc/ssl/ /etc/apache2/ssl/
 
 # Copy PHP Configurations
@@ -246,9 +234,9 @@ COPY src/supervisor/supervisord.conf /etc/supervisor/
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Enable site and security configurations
-RUN a2ensite yii2 \
-    && a2enconf security \
+# Enable only security configuration
+# Site selection will be done dynamically by 30-ssl.sh script
+RUN a2enconf security php-fpm-proxy \
     && a2dissite 000-default 2>/dev/null || true
 
 # Make scripts executable
