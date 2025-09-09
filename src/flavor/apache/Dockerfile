@@ -112,7 +112,6 @@ RUN a2dismod mpm_prefork 2>/dev/null || true \
 RUN mkdir -p \
     ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
-    /etc/apache2/ssl/external \
     /var/cache/apache2 \
     /var/lib/php/sessions \
     /var/lib/php/tmp \
@@ -124,7 +123,8 @@ RUN mkdir -p \
     /var/lib/php \
     /var/run/apache2 \
     /var/run/php \
-    && chmod 755 /etc/apache2/ssl /var/cache/apache2 /etc/apache2/ssl/external
+    && chmod 750 /etc/apache2/ssl \
+    && chmod 755 /var/cache/apache2
 
 # Layer 7: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
