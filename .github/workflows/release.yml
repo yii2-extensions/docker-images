@@ -10,7 +10,7 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.ref || github.event.inputs.version }}
+  group: release-${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.version }}
   cancel-in-progress: true
 
 name: release
@@ -61,6 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
       packages: write
 
     strategy:
@@ -90,6 +91,7 @@ jobs:
     - name: Prepare tags.
       id: tags
       run: |
+        set -Eeuo pipefail
         BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
         VERSION="${{ needs.validate-version.outputs.version }}"
         BUILD_TYPE="${{ matrix.build_type }}"
@@ -99,33 +101,35 @@ jobs:
         TAGS="${BASE_NAME}:${VERSION}-${BUILD_TYPE}"
         TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
 
-        # Latest tag for prod on version tags
-        if [[ "$BUILD_TYPE" == "prod" && "${{ github.ref }}" == refs/tags/v* ]]; then
+        # Latest tag for prod on version tags or validated manual releases
+        if [[ "$BUILD_TYPE" == "prod" && ( "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
           TAGS="${TAGS},${BASE_NAME}:latest"
           TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-latest"
         fi
 
         # Build type latest
-        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+        if [[ "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           TAGS="${TAGS},${BASE_NAME}:${BUILD_TYPE}-latest"
         fi
 
-        echo "tags=$TAGS" >> $GITHUB_OUTPUT
+        printf 'tags=%s\n' "$TAGS" >> "$GITHUB_OUTPUT"
         echo "📦 Tags: $TAGS"
 
     - name: Build and Push.
       uses: docker/build-push-action@v6
       with:
-        context: .
-        file: ./src/flavor/apache/Dockerfile
-        push: true
-        tags: ${{ steps.tags.outputs.tags }}
         build-args: |
           BUILD_TYPE=${{ matrix.build_type }}
           PHP_VERSION=${{ env.PHP_VERSION }}
           VERSION=${{ needs.validate-version.outputs.version }}
+        cache-from: type=gha,scope=${{ matrix.build_type }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
+        context: .
+        file: ./src/flavor/apache/Dockerfile
         labels: |
           org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
-        cache-from: type=gha,scope=${{ matrix.build_type }}
-        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
+        provenance: true
+        push: true
+        sbom: true
+        tags: ${{ steps.tags.outputs.tags }}
