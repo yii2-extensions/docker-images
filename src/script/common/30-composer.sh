@@ -23,11 +23,10 @@ composer_install() {
 
     log INFO "Installing Composer dependencies..."
 
-    # Give www-data write access (opt-in; selective to reduce churn)
+    # Give www-data write access (opt-out; enabled by default, selective to reduce churn)
     if [[ "${FIX_PERMS:-true}" == "true" ]]; then
-        find /var/www/app ! -user www-data -exec chown www-data:www-data {} +
-        find /var/www/app -type d -exec chmod u+rwx,g+rwx {} +
-        find /var/www/app -type f -exec chmod u+rw,g+rw {} +
+        chown -R www-data:www-data /var/www/app
+        chmod -R g+rwX /var/www/app
     fi
 
     # Ensure npm cache directory exists
