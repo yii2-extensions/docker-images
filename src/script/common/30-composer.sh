@@ -30,9 +30,14 @@ composer_install() {
         find /var/www/app -type f -exec chmod u+rw,g+rw {} +
     fi
 
-    # Create and configure npm cache directory for www-data
+    # Ensure npm cache directory exists
     mkdir -p /var/www/.npm
     chown -R www-data:www-data /var/www/.npm
+
+    # Ensure Composer cache directory exists
+    mkdir -p /var/www/.composer/cache
+    chown -R www-data:www-data /var/www/.composer
+
 
     # Install dependencies with proper environment variables
     if [[ "${YII_ENV:-}" == "prod" || "${BUILD_TYPE:-}" == "prod" ]]; then

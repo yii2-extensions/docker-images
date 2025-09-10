@@ -82,10 +82,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Layer 2: Install Node.js for asset building
 ARG NODE_MAJOR=20
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -euxo pipefail; \
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /tmp/nodesource.sh; \
+    bash /tmp/nodesource.sh; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends nodejs; \
+    node --version && npm --version; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/nodesource.sh
 
 # Layer 3: Install php-extension-installer tool
 ADD --chmod=0755 \
