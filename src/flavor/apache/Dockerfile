@@ -253,9 +253,9 @@ RUN a2enconf \
     02-security.conf \
     03-ssl-tls.conf \
     04-compression.conf \
-    06-php-fpm.conf \
-    07-logging.conf \
-    08-rate-limiting.conf \
+    05-php-fpm.conf \
+    06-logging.conf \
+    07-rate-limiting.conf \
     && a2dissite 000-default 2>/dev/null || true
 
 # Layer 22: Make scripts executable
