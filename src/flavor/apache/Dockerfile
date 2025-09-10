@@ -106,15 +106,13 @@ RUN install-php-extensions \
     zip \
     imagick \
     gd \
-    @composer \
-    --cleanup
+    @composer
 
 # Layer 5: Database extensions
 RUN install-php-extensions \
     pdo_mysql \
     pdo_pgsql \
-    redis \
-    --cleanup
+    redis
 
 # Layer 6: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
@@ -155,20 +153,17 @@ FROM base AS dev
 
 # Layer 9: Development-only extensions
 RUN install-php-extensions \
-    xdebug \
-    --cleanup
+    xdebug
 
 # Layer 10: Additional database extensions for development
 RUN install-php-extensions \
     mongodb \
-    memcached \
-    --cleanup
+    memcached
 
 # Layer 11: Development utilities
 RUN install-php-extensions \
     soap \
-    yaml \
-    --cleanup
+    yaml
 
 # Layer 12: Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -188,13 +183,11 @@ FROM dev AS full
 # Layer 13: Oracle extensions
 RUN install-php-extensions \
     oci8 \
-    pdo_oci \
-    --cleanup
+    pdo_oci
 
 # Layer 14: Additional testing extensions
 RUN install-php-extensions \
-    tidy \
-    --cleanup
+    tidy
 
 # Layer 15: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
@@ -209,7 +202,7 @@ RUN set -ex \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get install -y unixodbc-dev \
-    && install-php-extensions sqlsrv pdo_sqlsrv --cleanup \
+    && install-php-extensions sqlsrv pdo_sqlsrv \
     && apt-get purge -y --auto-remove gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
