@@ -119,7 +119,7 @@ RUN install-php-extensions \
 RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2enmod brotli \
     && a2enmod mpm_event \
-    && a2enmod rewrite headers expires ssl proxy proxy_fcgi http2 \
+    && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
 # Layer 7: Create directories and set permissions
@@ -247,15 +247,15 @@ COPY src/supervisor/supervisord.conf /etc/supervisor/
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Layer 21: Enable only security configuration by default
+# Layer 21: Enable Apache configurations
 RUN a2enconf \
     01-performance.conf \
     02-security.conf \
     03-ssl-tls.conf \
     04-compression.conf \
-    06-php-fpm.conf \
-    07-logging.conf \
-    08-rate-limiting.conf \
+    05-php-fpm.conf \
+    06-logging.conf \
+    07-rate-limiting.conf \
     && a2dissite 000-default 2>/dev/null || true
 
 # Layer 22: Make scripts executable
