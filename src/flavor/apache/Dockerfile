@@ -226,28 +226,34 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
 # Layer 17: Copy Apache configuration files
-COPY src/flavor/apache/etc/apache2.conf /etc/apache2/
-COPY src/flavor/apache/etc/conf-available/ /etc/apache2/conf-available/
-COPY src/flavor/apache/etc/sites-available/ /etc/apache2/sites-available/
-COPY src/flavor/apache/etc/ssl/ /etc/apache2/ssl/
+COPY /src/flavor/apache/etc/apache2.conf /etc/apache2/
+COPY /src/flavor/apache/etc/conf-available/ /etc/apache2/conf-available/
+COPY /src/flavor/apache/etc/sites-available/ /etc/apache2/sites-available/
+COPY /src/flavor/apache/etc/ssl/ /etc/apache2/ssl/
 
 # Layer 18: Copy PHP Configurations
-COPY src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
-COPY src/php/ /tmp/php/
+COPY /src/php-fpm/docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+COPY /src/php/ /tmp/php/
 RUN cp "/tmp/php/${BUILD_TYPE}.ini" /usr/local/etc/php/conf.d/99-app.ini \
     && rm -rf /tmp/php
 
 # Layer 19: Copy Supervisor configurations
-COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
-COPY src/supervisor/supervisord.conf /etc/supervisor/
+COPY /src/supervisor/conf.d/ /etc/supervisor/conf.d/
+COPY /src/supervisor/supervisord.conf /etc/supervisor/
 
 # Layer 20: Copy scripts
-COPY src/script/common/ /usr/local/bin/common/
-COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
+COPY /src/script/common/ /usr/local/bin/common/
+COPY /src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Layer 21: Enable only security configuration
-# Site selection will be done dynamically by 30-ssl.sh script
-RUN a2enconf security php-fpm-proxy \
+# Layer 21: Enable only security configuration by default
+RUN a2enconf \
+    01-performance.conf \
+    02-security.conf \
+    03-ssl-tls.conf \
+    04-compression.conf \
+    06-php-fpm.conf \
+    07-logging.conf \
+    08-rate-limiting.conf \
     && a2dissite 000-default 2>/dev/null || true
 
 # Layer 22: Make scripts executable

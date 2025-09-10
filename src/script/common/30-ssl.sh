@@ -178,18 +178,24 @@ setup_apache_vhost() {
         log INFO "Disabling OCSP stapling for self-signed certificates"
 
         # Comment out OCSP stapling lines in apache2.conf
-        sed -i 's/^\s*SSLUseStapling on/    # SSLUseStapling on/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*SSLStaplingCache/    # SSLStaplingCache/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*SSLStaplingResponderTimeout/    # SSLStaplingResponderTimeout/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*SSLStaplingReturnResponderErrors/    # SSLStaplingReturnResponderErrors/' /etc/apache2/apache2.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingCache/    # SSLStaplingCache/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingErrorCacheTimeout/    # SSLStaplingErrorCacheTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingFakeTryLater/    # SSLStaplingFakeTryLater/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingResponderTimeout/    # SSLStaplingResponderTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingReturnResponderErrors/    # SSLStaplingReturnResponderErrors/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLStaplingStandardCacheTimeout/    # SSLStaplingStandardCacheTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*SSLUseStapling on/    # SSLUseStapling on/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
     else
         log INFO "OCSP stapling enabled (external certificates)"
 
         # Uncomment OCSP stapling lines if they were previously commented
-        sed -i 's/^\s*#\s*SSLUseStapling on/    SSLUseStapling on/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*#\s*SSLStaplingCache/    SSLStaplingCache/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*#\s*SSLStaplingResponderTimeout/    SSLStaplingResponderTimeout/' /etc/apache2/apache2.conf 2>/dev/null || true
-        sed -i 's/^\s*#\s*SSLStaplingReturnResponderErrors/    SSLStaplingReturnResponderErrors/' /etc/apache2/apache2.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingCache/    SSLStaplingCache/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingErrorCacheTimeout/    SSLStaplingErrorCacheTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingFakeTryLater/    SSLStaplingFakeTryLater/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingResponderTimeout/    SSLStaplingResponderTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingReturnResponderErrors/    SSLStaplingReturnResponderErrors/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLStaplingStandardCacheTimeout/    SSLStaplingStandardCacheTimeout/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
+        sed -i 's/^\s*#\s*SSLUseStapling on/    SSLUseStapling on/' /etc/apache2/conf-available/03-ssl-tls.conf 2>/dev/null || true
     fi
 
     # List active sites only in debug mode
