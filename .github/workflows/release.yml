@@ -125,7 +125,7 @@ jobs:
         cache-from: type=gha,scope=${{ matrix.build_type }}
         cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
         context: .
-        file: ./src/flavor/apache/Dockerfile
+        file: ./src/flavor/Dockerfile.apache
         labels: |
           org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
