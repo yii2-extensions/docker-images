@@ -40,8 +40,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_CHECKOV: false
-          VALIDATE_DOCKERFILE: true
-          VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_TRIVY: false
 
   build:
@@ -97,6 +95,8 @@ jobs:
             PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
           cache-from: >-
             type=gha,scope=${{ github.head_ref || github.ref_name }}-${{ matrix.build_type }}
+          cache-to: >-
+            type=gha,mode=max,scope=${{ github.head_ref || github.ref_name }}-${{ matrix.build_type }}
           provenance: false
           sbom: false
 
