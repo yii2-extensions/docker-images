@@ -38,8 +38,8 @@ composer_install() {
         if [[ ! -x "$NODE_CACHE_DIR/bin/node" ]]; then
             log INFO "Downloading Node.js $NODE_VERSION into cache"
             mkdir -p "$NODE_CACHE_DIR"
-            curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-                | tar -xJ -C "$NODE_CACHE_DIR" --strip-components=1
+            curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" |
+                tar -xJ -C "$NODE_CACHE_DIR" --strip-components=1
         else
             log INFO "Using cached Node.js from $NODE_CACHE_DIR"
         fi

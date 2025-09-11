@@ -18,7 +18,7 @@ setup_directories() {
 
     # Add custom directories if specified
     if [[ -n "${CUSTOM_DIRECTORIES:-}" ]]; then
-        IFS=',' read -ra CUSTOM_DIRS <<< "$CUSTOM_DIRECTORIES"
+        IFS=',' read -ra CUSTOM_DIRS <<<"$CUSTOM_DIRECTORIES"
         app_dirs+=("${CUSTOM_DIRS[@]}")
     fi
 

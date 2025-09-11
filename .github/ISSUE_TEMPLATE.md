@@ -1,12 +1,12 @@
 # Issue Report
 
-### What steps will reproduce the problem?
+## What steps will reproduce the problem?
 
-### What is the expected result?
+## What is the expected result?
 
-### What do you get instead?
+## What do you get instead?
 
-### Additional info
+## Additional info
 
 | Q                | A |
 | ---------------- | --- |

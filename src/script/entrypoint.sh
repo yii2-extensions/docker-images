@@ -93,12 +93,12 @@ wait_for_databases() {
         if [[ -n "${!host_var:-}" ]]; then
             local default_port
             case $db_type in
-                MYSQL)   default_port=3306 ;;
-                PGSQL)   default_port=5432 ;;
-                REDIS)   default_port=6379 ;;
-                MONGODB) default_port=27017 ;;
-                MSSQL)   default_port=1433 ;;
-                ORACLE)  default_port=1521 ;;
+            MYSQL) default_port=3306 ;;
+            PGSQL) default_port=5432 ;;
+            REDIS) default_port=6379 ;;
+            MONGODB) default_port=27017 ;;
+            MSSQL) default_port=1433 ;;
+            ORACLE) default_port=1521 ;;
             esac
 
             wait_for_service "${!host_var}" "${!port_var:-$default_port}" "$db_type"
