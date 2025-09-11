@@ -130,14 +130,7 @@ RUN install-php-extensions \
     pdo_pgsql \
     redis
 
-# Layer 6: Apache configuration
-RUN a2dismod mpm_prefork 2>/dev/null || true \
-    && a2enmod brotli \
-    && a2enmod mpm_event \
-    && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
-    && a2dissite 000-default
-
-# Layer 7: Create directories and set permissions
+# Layer 6: Create directories and set permissions
 RUN mkdir -p \
     ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
@@ -159,7 +152,7 @@ RUN mkdir -p \
     && chmod 750 /etc/apache2/ssl \
     && chmod 755 /var/cache/apache2
 
-# Layer 8: Configure sudo for www-data
+# Layer 7: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
     && chmod 0440 /etc/sudoers.d/www-data
 
@@ -168,21 +161,21 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
 #==============================================================================
 FROM base AS dev
 
-# Layer 9: Development-only extensions
+# Layer 8: Development-only extensions
 RUN install-php-extensions \
     xdebug
 
-# Layer 10: Additional database extensions for development
+# Layer 9: Additional database extensions for development
 RUN install-php-extensions \
     mongodb \
     memcached
 
-# Layer 11: Development utilities
+# Layer 10: Development utilities
 RUN install-php-extensions \
     soap \
     yaml
 
-# Layer 12: Development tools
+# Layer 11: Development tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     vim \
@@ -197,16 +190,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 #==============================================================================
 FROM dev AS full
 
-# Layer 13: Oracle extensions
+# Layer 12: Oracle extensions
 RUN install-php-extensions \
     oci8 \
     pdo_oci
 
-# Layer 14: Additional testing extensions
+# Layer 13: Additional testing extensions
 RUN install-php-extensions \
     tidy
 
-# Layer 15: Microsoft SQL Server support
+# Layer 14: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
@@ -229,7 +222,7 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Layer 16: Production build already has all necessary extensions from base
+# Layer 15: Production build already has all necessary extensions from base
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -242,20 +235,27 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Layer 17: Copy Apache configuration files
+# Layer 16: Copy Apache configuration files
 COPY src/etc/apache2/ /etc/apache2/
 
-# Layer 18: Copy PHP Configurations
+# Layer 17: Copy PHP Configurations
 COPY src/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY src/etc/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 
-# Layer 19: Copy Supervisor configurations
+# Layer 18: Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
-# Layer 20: Copy scripts
+# Layer 19: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
+
+# Layer 20: Apache configuration
+RUN a2dismod mpm_prefork 2>/dev/null || true \
+    && a2enmod brotli \
+    && a2enmod mpm_event \
+    && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
+    && a2dissite 000-default
 
 # Layer 21: Enable Apache configurations
 RUN a2enconf \
