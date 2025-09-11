@@ -1,9 +1,0 @@
----
-extends: default
-rules:
-  line-length:
-    max: 120
-    level: warning  # O 'error' si quieres que sea estricto
-  indentation:
-    spaces: 2
-  comments-indentation: disable

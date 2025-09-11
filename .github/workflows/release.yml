@@ -157,7 +157,10 @@ jobs:
     if: |
       always() &&
       needs.build.result == 'success' &&
-      (github.event.inputs.cleanup_after == 'true' || github.event_name == 'push')
+      (
+        github.event.inputs.cleanup_after == 'true' ||
+        github.event_name == 'push'
+      )
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -198,11 +201,14 @@ jobs:
 
       - name: Report cleanup
         if: always()
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_TYPE: ${{ matrix.build_type }}
         run: |
           {
             echo "### 🧹 Cleanup post-release"
-            echo "**Build type:** ${{ matrix.build_type }}"
-            echo "**Version nueva:** ${{ needs.validate-version.outputs.version }}"
+            echo "**Build type:** ${{ env.BUILD_TYPE }}"
+            echo "**Version nueva:** ${{ env.BUILD_VERSION }}"
             echo "**Versiones mantenidas:** 2"
             echo "**Estado:** ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
