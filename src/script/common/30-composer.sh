@@ -29,14 +29,23 @@ composer_install() {
         chmod -R g+rwX /var/www/app
     fi
 
-    # Ensure npm cache directory exists
-    mkdir -p /var/www/.npm
-    chown -R www-data:www-data /var/www/.npm
+    # Node.js setup with cache
+    if ! command -v node >/dev/null 2>&1; then
+        NODE_CACHE_DIR=/var/www/.cache/node
+        NODE_VERSION=24.8.0
 
-    # Ensure Composer cache directory exists
-    mkdir -p /var/www/.composer/cache
-    chown -R www-data:www-data /var/www/.composer
+        if [[ ! -x "$NODE_CACHE_DIR/bin/node" ]]; then
+            log INFO "Downloading Node.js $NODE_VERSION into cache"
+            mkdir -p "$NODE_CACHE_DIR"
+            curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+                | tar -xJ -C "$NODE_CACHE_DIR" --strip-components=1
+        else
+            log INFO "Using cached Node.js from $NODE_CACHE_DIR"
+        fi
 
+        export PATH="$NODE_CACHE_DIR/bin:$PATH"
+        log DEBUG "Node.js version: $(node -v), npm version: $(npm -v)"
+    fi
 
     # Install dependencies with proper environment variables
     if [[ "${YII_ENV:-}" == "prod" || "${BUILD_TYPE:-}" == "prod" ]]; then

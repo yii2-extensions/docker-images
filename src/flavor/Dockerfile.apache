@@ -6,9 +6,9 @@
 ARG BUILD_TYPE=dev
 ARG PHP_VERSION=8.4
 
-#==============================================================================
+#------------------------------------------------------------------------------
 # Base System
-#==============================================================================
+#------------------------------------------------------------------------------
 FROM php:${PHP_VERSION}-fpm-trixie AS base
 
 # Environment variables
@@ -90,29 +90,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     sudo \
     gosu \
-    ca-certificates \
-    gnupg \
+    vim-tiny \
     && apt-get clean \
     && rm -rf /etc/apache2/sites-enabled/000-default.conf \
     && rm -rf /var/lib/apt/lists/*
 
-# Layer 2: Install Node.js for asset building
-ARG NODE_MAJOR=20
-RUN set -euxo pipefail; \
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /tmp/nodesource.sh; \
-    bash /tmp/nodesource.sh; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends nodejs; \
-    node --version && npm --version; \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/* /tmp/nodesource.sh
-
-# Layer 3: Install php-extension-installer tool
+# Layer 2: Install php-extension-installer tool
 ADD --chmod=0755 \
     https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     /usr/local/bin/
 
-# Layer 4: Core PHP extensions for Yii2
+# Layer 3: Core PHP extensions for Yii2
 RUN install-php-extensions \
     apcu \
     bcmath \
@@ -124,13 +112,13 @@ RUN install-php-extensions \
     gd \
     @composer
 
-# Layer 5: Database extensions
+# Layer 4: Database extensions
 RUN install-php-extensions \
     pdo_mysql \
     pdo_pgsql \
     redis
 
-# Layer 6: Create directories and set permissions
+# Layer 5: Create directories and set permissions
 RUN mkdir -p \
     ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
@@ -139,6 +127,8 @@ RUN mkdir -p \
     /var/lib/php/tmp \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.cache/node \
+    /var/www/.composer \
     /var/www/.composer/cache \
     /var/www/.npm \
     && chown -R www-data:www-data \
@@ -147,59 +137,51 @@ RUN mkdir -p \
     /var/lib/php \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.cache/node \
     /var/www/.composer \
+    /var/www/.composer/cache \
     /var/www/.npm \
     && chmod 750 /etc/apache2/ssl \
     && chmod 755 /var/cache/apache2
 
-# Layer 7: Configure sudo for www-data
+# Layer 6: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
     && chmod 0440 /etc/sudoers.d/www-data
 
-#==============================================================================
+#------------------------------------------------------------------------------
 # Development Build
-#==============================================================================
+#------------------------------------------------------------------------------
 FROM base AS dev
 
-# Layer 8: Development-only extensions
+# Layer 7: Development-only extensions
 RUN install-php-extensions \
     xdebug
 
-# Layer 9: Additional database extensions for development
+# Layer 8: Additional database extensions for development
 RUN install-php-extensions \
     mongodb \
     memcached
 
-# Layer 10: Development utilities
+# Layer 9: Development utilities
 RUN install-php-extensions \
     soap \
     yaml
 
-# Layer 11: Development tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    vim \
-    default-mysql-client \
-    postgresql-client \
-    redis-tools \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-#==============================================================================
+#------------------------------------------------------------------------------
 # Full Testing Build
-#==============================================================================
+#------------------------------------------------------------------------------
 FROM dev AS full
 
-# Layer 12: Oracle extensions
+# Layer 10: Oracle extensions
 RUN install-php-extensions \
     oci8 \
     pdo_oci
 
-# Layer 13: Additional testing extensions
+# Layer 11: Additional testing extensions
 RUN install-php-extensions \
     tidy
 
-# Layer 14: Microsoft SQL Server support
+# Layer 12: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
@@ -222,7 +204,7 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Layer 15: Production build already has all necessary extensions from base
+# Layer 13: Production build already has all necessary extensions from base
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -235,29 +217,29 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Layer 16: Copy Apache configuration files
+# Layer 14: Copy Apache configuration files
 COPY src/etc/apache2/ /etc/apache2/
 
-# Layer 17: Copy PHP Configurations
+# Layer 15: Copy PHP Configurations
 COPY src/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY src/etc/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 
-# Layer 18: Copy Supervisor configurations
+# Layer 16: Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
-# Layer 19: Copy scripts
+# Layer 17: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Layer 20: Apache configuration
+# Layer 18: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2enmod brotli \
     && a2enmod mpm_event \
     && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
-# Layer 21: Enable Apache configurations
+# Layer 19: Enable Apache configurations
 RUN a2enconf \
     01-performance.conf \
     02-security.conf \
@@ -267,7 +249,7 @@ RUN a2enconf \
     06-logging.conf \
     07-rate-limiting.conf
 
-# Layer 22: Make scripts executable
+# Layer 20: Make scripts executable
 RUN chmod +x /usr/local/bin/entrypoint
 
 WORKDIR /var/www/app
