@@ -1,3 +1,4 @@
+#!/bin/bash
 #==============================================================================
 # Logging Functionality
 #==============================================================================
@@ -5,8 +6,9 @@
 log() {
     local level=$1
     shift
-    local message="$@"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local message="$*"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     case "$level" in
         ERROR)   echo -e "${RED}[${timestamp}]${NC} ${RED}ERROR:${NC} $message" >&2 ;;
