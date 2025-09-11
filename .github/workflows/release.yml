@@ -1,9 +1,18 @@
+---
 on:
   push:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
     inputs:
+      cleanup_after:
+        description: 'Run cleanup after build'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
       version:
         description: 'Version to build (for example, 1.0.0)'
         required: true
@@ -102,13 +111,13 @@ jobs:
         TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
 
         # Latest tag for prod on version tags or validated manual releases
-        if [[ "$BUILD_TYPE" == "prod" && ( "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
+        if [[ "$BUILD_TYPE" == "prod" && ( "${{ github.ref }}" =~ ^refs/tags/v || "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
           TAGS="${TAGS},${BASE_NAME}:latest"
           TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-latest"
         fi
 
         # Build type latest
-        if [[ "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+        if [[ "${{ github.ref }}" =~ ^refs/tags/v || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           TAGS="${TAGS},${BASE_NAME}:${BUILD_TYPE}-latest"
         fi
 
@@ -133,3 +142,86 @@ jobs:
         push: true
         sbom: true
         tags: ${{ steps.tags.outputs.tags }}
+
+  cleanup-old-versions:
+    name: Cleanup old versions
+    needs: build
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (github.event.inputs.cleanup_after == 'true' || github.event_name == 'push')
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    strategy:
+      matrix:
+        build_type: [dev, full, prod]
+
+    steps:
+    - name: Wait for images to be available
+      run: sleep 30
+
+    - name: Cleanup ${{ matrix.build_type }} versions
+      uses: dataaxiom/ghcr-cleanup-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        owner: ${{ github.repository_owner }}
+        repository: ${{ github.repository }}
+        package: apache
+        delete-tags: '*-${{ matrix.build_type }}'
+        exclude-tags: |
+          latest
+          ${{ matrix.build_type }}-latest
+          8.4-latest
+          ${{ needs.validate-version.outputs.version }}-${{ matrix.build_type }}
+          8.4-${{ needs.validate-version.outputs.version }}-${{ matrix.build_type }}
+        keep-n-tagged: 2
+        delete-untagged: true
+        keep-n-untagged: 0
+        older-than: 1 hour
+        validate: true
+        dry-run: false
+
+    - name: Report cleanup
+      if: always()
+      run: |
+        echo "### 🧹 Cleanup post-release" >> $GITHUB_STEP_SUMMARY
+        echo "**Build type:** ${{ matrix.build_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Version nueva:** ${{ needs.validate-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Versiones mantenidas:** 2" >> $GITHUB_STEP_SUMMARY
+        echo "**Estado:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
+  summary:
+    name: Release Summary
+    needs: [validate-version, build, cleanup-old-versions]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Generate summary
+      run: |
+        echo "# 📦 Release Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** ${{ needs.validate-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**PHP Version:** ${{ env.PHP_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Registry:** ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        echo "## 🏗️ Build Status" >> $GITHUB_STEP_SUMMARY
+        echo "| Build Type | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| dev | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| full | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| prod | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${{ needs.cleanup-old-versions.result }}" != "skipped" ]]; then
+          echo "## 🧹 Cleanup" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ needs.cleanup-old-versions.result }}" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "*Released at $(date -u +%Y-%m-%dT%H:%M:%SZ)*" >> $GITHUB_STEP_SUMMARY
