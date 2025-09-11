@@ -111,11 +111,14 @@ jobs:
           sbom: false
 
       - name: Show result.
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          echo "🎉 Build completed for ${{ matrix.build_type }}!"
-          echo "Event: ${{ github.event_name }}"
+          echo "🎉 Build completed for ${{ env.BUILD_TYPE }}!"
+          echo "Event: ${{ env.EVENT_NAME }}"
           echo "Tags: ${{ steps.tags.outputs.TAG }}"
-          if [[ "${{ github.event_name }}" == "push" ]]; then
+          if [[ "${{ env.EVENT_NAME }}" == "push" ]]; then
             echo "✅ Image pushed to registry"
           else
             echo "ℹ️ Image built but not pushed (PR mode)"
