@@ -29,10 +29,6 @@ composer_install() {
         chmod -R g+rwX /var/www/app
     fi
 
-    # Ensure node, composer, and npm cache directories exist
-    mkdir -p /var/www/.cache/node /var/www/.composer/cache /var/www/.npm
-    chown -R www-data:www-data /var/www/.cache/node /var/www/.composer/cache /var/www/.npm
-
     # Node.js setup with cache
     if ! command -v node >/dev/null 2>&1; then
         NODE_CACHE_DIR=/var/www/.cache/node

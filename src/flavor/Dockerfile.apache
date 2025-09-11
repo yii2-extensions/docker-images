@@ -90,8 +90,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     sudo \
     gosu \
-    ca-certificates \
-    gnupg \
+    vim-tiny \
     && apt-get clean \
     && rm -rf /etc/apache2/sites-enabled/000-default.conf \
     && rm -rf /var/lib/apt/lists/*
@@ -128,6 +127,8 @@ RUN mkdir -p \
     /var/lib/php/tmp \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.cache/node \
+    /var/www/.composer \
     /var/www/.composer/cache \
     /var/www/.npm \
     && chown -R www-data:www-data \
@@ -136,7 +137,9 @@ RUN mkdir -p \
     /var/lib/php \
     /var/run/apache2 \
     /var/run/php \
+    /var/www/.cache/node \
     /var/www/.composer \
+    /var/www/.composer/cache \
     /var/www/.npm \
     && chmod 750 /etc/apache2/ssl \
     && chmod 755 /var/cache/apache2
@@ -164,28 +167,21 @@ RUN install-php-extensions \
     soap \
     yaml
 
-# Layer 10: Development tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    vim \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 #------------------------------------------------------------------------------
 # Full Testing Build
 #------------------------------------------------------------------------------
 FROM dev AS full
 
-# Layer 11: Oracle extensions
+# Layer 10: Oracle extensions
 RUN install-php-extensions \
     oci8 \
     pdo_oci
 
-# Layer 12: Additional testing extensions
+# Layer 11: Additional testing extensions
 RUN install-php-extensions \
     tidy
 
-# Layer 13: Microsoft SQL Server support
+# Layer 12: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
@@ -208,7 +204,7 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Layer 14: Production build already has all necessary extensions from base
+# Layer 13: Production build already has all necessary extensions from base
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -221,29 +217,29 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Layer 15: Copy Apache configuration files
+# Layer 14: Copy Apache configuration files
 COPY src/etc/apache2/ /etc/apache2/
 
-# Layer 16: Copy PHP Configurations
+# Layer 15: Copy PHP Configurations
 COPY src/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY src/etc/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 
-# Layer 17: Copy Supervisor configurations
+# Layer 16: Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
-# Layer 18: Copy scripts
+# Layer 17: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Layer 19: Apache configuration
+# Layer 18: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2enmod brotli \
     && a2enmod mpm_event \
     && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
-# Layer 20: Enable Apache configurations
+# Layer 19: Enable Apache configurations
 RUN a2enconf \
     01-performance.conf \
     02-security.conf \
@@ -253,7 +249,7 @@ RUN a2enconf \
     06-logging.conf \
     07-rate-limiting.conf
 
-# Layer 21: Make scripts executable
+# Layer 20: Make scripts executable
 RUN chmod +x /usr/local/bin/entrypoint
 
 WORKDIR /var/www/app
