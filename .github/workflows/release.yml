@@ -131,18 +131,21 @@ jobs:
 
       - name: Build and Push.
         uses: docker/build-push-action@v6
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          IMAGE_CREATED: ${{ steps.meta.outputs.created }}
         with:
           build-args: |
             BUILD_TYPE=${{ matrix.build_type }}
             PHP_VERSION=${{ env.PHP_VERSION }}
-            VERSION=${{ needs.validate-version.outputs.version }}
+            VERSION=${{ env.BUILD_VERSION }}
           cache-from: type=gha,scope=${{ matrix.build_type }}
           cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
           context: .
           file: ./src/flavor/Dockerfile.apache
           labels: |
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-            org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
+            org.opencontainers.image.created=${{ env.IMAGE_CREATED }}
+            org.opencontainers.image.version=${{ env.BUILD_VERSION }}
           provenance: true
           push: true
           sbom: true
@@ -168,8 +171,12 @@ jobs:
       - name: Wait for images to be available
         run: sleep 30
 
-      - name: Cleanup ${{ matrix.build_type }} versions
+      - name: >-
+          Cleanup ${{ matrix.build_type }} versions
         uses: dataaxiom/ghcr-cleanup-action@v1
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_TYPE: ${{ matrix.build_type }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           owner: ${{ github.repository_owner }}
@@ -180,8 +187,8 @@ jobs:
             latest
             ${{ matrix.build_type }}-latest
             8.4-latest
-            ${{ needs.validate-version.outputs.version }}-${{ matrix.build_type }}
-            8.4-${{ needs.validate-version.outputs.version }}-${{ matrix.build_type }}
+            ${{ env.BUILD_VERSION }}-${{ env.BUILD_TYPE }}
+            8.4-${{ env.BUILD_VERSION }}-${{ env.BUILD_TYPE }}
           keep-n-tagged: 2
           delete-untagged: true
           keep-n-untagged: 0
@@ -208,27 +215,31 @@ jobs:
 
     steps:
       - name: Generate summary
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          CLEANUP_RESULT: ${{ needs.cleanup-old-versions.result }}
         run: |
           {
             echo "# 📦 Release Summary"
             echo ""
-            echo "**Version:** ${{ needs.validate-version.outputs.version }}"
+            echo "**Version:** ${{ env.BUILD_VERSION }}"
             echo "**PHP Version:** ${{ env.PHP_VERSION }}"
             echo "**Registry:** ${{ env.REGISTRY }}"
             echo ""
             echo "## 🗂️ Build Status"
             echo "| Build Type | Status |"
             echo "|------------|--------|"
-            echo "| dev | ${{ needs.build.result }} |"
-            echo "| full | ${{ needs.build.result }} |"
-            echo "| prod | ${{ needs.build.result }} |"
+            echo "| dev | ${{ env.BUILD_RESULT }} |"
+            echo "| full | ${{ env.BUILD_RESULT }} |"
+            echo "| prod | ${{ env.BUILD_RESULT }} |"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ "${{ needs.cleanup-old-versions.result }}" != "skipped" ]]; then
+          if [[ "${{ env.CLEANUP_RESULT }}" != "skipped" ]]; then
             {
               echo "## 🧹 Cleanup"
-              echo "Status: ${{ needs.cleanup-old-versions.result }}"
+              echo "Status: ${{ env.CLEANUP_RESULT }}"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
