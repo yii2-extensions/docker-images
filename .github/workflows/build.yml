@@ -39,14 +39,8 @@ jobs:
         uses: super-linter/super-linter@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_DOCKERFILE: true
-          VALIDATE_DOCKERFILE_HADOLINT: true
-          VALIDATE_BASH: true
-          VALIDATE_SHELL_SHFMT: true
-          VALIDATE_YAML: true
-          VALIDATE_GITHUB_ACTIONS: true
-          DEFAULT_BRANCH: main
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CHECKOV: false
+          VALIDATE_TRIVY: false
 
   build:
     runs-on: ubuntu-latest
