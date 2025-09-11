@@ -145,7 +145,7 @@ jobs:
 
   cleanup-old-versions:
     name: Cleanup old versions
-    needs: build
+    needs: [validate-version, build]
     if: |
       always() &&
       needs.build.result == 'success' &&
@@ -187,11 +187,13 @@ jobs:
     - name: Report cleanup
       if: always()
       run: |
-        echo "### 🧹 Cleanup post-release" >> $GITHUB_STEP_SUMMARY
-        echo "**Build type:** ${{ matrix.build_type }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Version nueva:** ${{ needs.validate-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Versiones mantenidas:** 2" >> $GITHUB_STEP_SUMMARY
-        echo "**Estado:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "### 🧹 Cleanup post-release"
+          echo "**Build type:** ${{ matrix.build_type }}"
+          echo "**Version nueva:** ${{ needs.validate-version.outputs.version }}"
+          echo "**Versiones mantenidas:** 2"
+          echo "**Estado:** ${{ job.status }}"
+        } >> "$GITHUB_STEP_SUMMARY"
 
   summary:
     name: Release Summary
@@ -202,26 +204,31 @@ jobs:
     steps:
     - name: Generate summary
       run: |
-        echo "# 📦 Release Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Version:** ${{ needs.validate-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "**PHP Version:** ${{ env.PHP_VERSION }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Registry:** ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        echo "## 🏗️ Build Status" >> $GITHUB_STEP_SUMMARY
-        echo "| Build Type | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| dev | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| full | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| prod | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "# 📦 Release Summary"
+          echo ""
+          echo "**Version:** ${{ needs.validate-version.outputs.version }}"
+          echo "**PHP Version:** ${{ env.PHP_VERSION }}"
+          echo "**Registry:** ${{ env.REGISTRY }}"
+          echo ""
+          echo "## 🗂️ Build Status"
+          echo "| Build Type | Status |"
+          echo "|------------|--------|"
+          echo "| dev | ${{ needs.build.result }} |"
+          echo "| full | ${{ needs.build.result }} |"
+          echo "| prod | ${{ needs.build.result }} |"
+          echo ""
+        } >> "$GITHUB_STEP_SUMMARY"
 
         if [[ "${{ needs.cleanup-old-versions.result }}" != "skipped" ]]; then
-          echo "## 🧹 Cleanup" >> $GITHUB_STEP_SUMMARY
-          echo "Status: ${{ needs.cleanup-old-versions.result }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🧹 Cleanup"
+            echo "Status: ${{ needs.cleanup-old-versions.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"
         fi
 
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "---" >> $GITHUB_STEP_SUMMARY
-        echo "*Released at $(date -u +%Y-%m-%dT%H:%M:%SZ)*" >> $GITHUB_STEP_SUMMARY
+        {
+          echo ""
+          echo "---"
+          echo "*Released at $(date -u +%Y-%m-%dT%H:%M:%SZ)*"
+        } >> "$GITHUB_STEP_SUMMARY"
