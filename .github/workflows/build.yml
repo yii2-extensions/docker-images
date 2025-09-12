@@ -30,6 +30,10 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -51,7 +55,6 @@ jobs:
     permissions:
       actions: write
       contents: read
-      packages: write
 
     strategy:
       fail-fast: false
