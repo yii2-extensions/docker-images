@@ -8,8 +8,8 @@
 
 ## Additional info
 
-| Q                | A |
-| ---------------- | --- |
+| Q                | A     |
+| ---------------- | ----- |
 | Version          | 1.0.? |
-| PHP version      | |
-| Operating system | |
+| PHP version      |       |
+| Operating system |       |
