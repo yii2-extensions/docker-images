@@ -33,9 +33,11 @@ env:
 jobs:
   validate-version:
     runs-on: ubuntu-latest
+
     outputs:
       version: ${{ steps.version.outputs.version }}
       should_build: ${{ steps.version.outputs.should_build }}
+
     steps:
       - name: Extract version.
         id: version
@@ -69,7 +71,9 @@ jobs:
   build:
     needs: validate-version
     if: needs.validate-version.outputs.should_build == 'true'
+
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       id-token: write
@@ -166,7 +170,9 @@ jobs:
         github.event.inputs.cleanup_after == 'true' ||
         github.event_name == 'push'
       )
+
     runs-on: ubuntu-latest
+
     permissions:
       packages: write
       contents: read
@@ -222,6 +228,7 @@ jobs:
     name: Release Summary
     needs: [validate-version, build, cleanup-old-versions]
     if: always()
+
     runs-on: ubuntu-latest
 
     steps:
