@@ -1,0 +1,3 @@
+---
+ignored:
+    - DL3008 # Pin versions in apk add.

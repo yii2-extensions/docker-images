@@ -1,1 +1,2 @@
+# Disable specific ShellCheck rules
 disable=SC1090,SC1091,SC2155
