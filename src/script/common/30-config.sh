@@ -1,3 +1,4 @@
+#!/bin/bash
 #==============================================================================
 # Update configuration
 #==============================================================================
@@ -15,42 +16,43 @@ update_config() {
     fi
 
     case $format in
-        apache)
-            local key_re
-            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
-            local repl
-            repl="$(printf '%s %s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
-            if grep -Eq "^[[:space:]]*${key_re}([[:space:]]|$)" "$file" 2>/dev/null; then
-                sed -i -E "s|^[[:space:]]*${key_re}([[:space:]]|$).*|${repl}|" "$file"
-            else
-                echo "${key} ${value}" >> "$file"
-            fi
-            ;;
-        ini)
-            local key_re
-            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
-            local repl
-            repl="$(printf '%s = %s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
-            if grep -Eq "^${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
-                sed -i -E "s|^${key_re}[[:space:]]*=.*|${repl}|" "$file"
-            else
-                echo "${key} = ${value}" >> "$file"
-            fi
-            ;;
-        env)
-            local key_re
-            key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\\+?|(){}-]/\\&/g')"
-            local repl
-            repl="$(printf '%s=%s' "$key" "$value" | sed -e 's/[&|\\/]/\\&/g')"
-            if grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
-                sed -i -E "s|^([[:space:]]*(export[[:space:]]+)?)${key_re}[[:space:]]*=.*|\1${repl}|" "$file"
-            else
-                echo "${key}=${value}" >> "$file"
-            fi
-            ;;
-        *)
-            log WARNING "Unsupported config format: ${format}"
-            return 1
+    apache)
+        local key_re
+        key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\+?|(){}-]/\&/g')"
+        local repl
+        repl="$(printf '%s %s' "$key" "$value" | sed -e 's/[&|\/]/\&/g')"
+        if grep -Eq "^[[:space:]]*${key_re}([[:space:]]|$)" "$file" 2>/dev/null; then
+            sed -i -E "s|^[[:space:]]*${key_re}([[:space:]]|$).*|${repl}|" "$file"
+        else
+            echo "${key} ${value}" >>"$file"
+        fi
+        ;;
+    ini)
+        local key_re
+        key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\+?|(){}-]/\&/g')"
+        local repl
+        repl="$(printf '%s = %s' "$key" "$value" | sed -e 's/[&|\/]/\&/g')"
+        if grep -Eq "^${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
+            sed -i -E "s|^${key_re}[[:space:]]*=.*|${repl}|" "$file"
+        else
+            echo "${key} = ${value}" >>"$file"
+        fi
+        ;;
+    env)
+        local key_re
+        key_re="$(printf '%s' "$key" | sed -e 's/[][^$.*/\+?|(){}-]/\&/g')"
+        local repl
+        repl="$(printf '%s=%s' "$key" "$value" | sed -e 's/[&|\/]/\&/g')"
+        if grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key_re}[[:space:]]*=" "$file" 2>/dev/null; then
+            sed -i -E "s|^([[:space:]]*(export[[:space:]]+)?)${key_re}[[:space:]]*=.*|\1${repl}|" "$file"
+        else
+            echo "${key}=${value}" >>"$file"
+        fi
+        ;;
+    *)
+        log WARNING "Unsupported config format: ${format}"
+        return 1
+        ;;
     esac
 
     log DEBUG "Config updated: ${key} in ${file}"

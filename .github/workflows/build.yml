@@ -1,21 +1,22 @@
+---
 on:
   pull_request:
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - '.gitignore'
-      - '.gitattributes'
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+      - ".gitattributes"
 
   push:
     branches:
       - main
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - '.gitignore'
-      - '.gitattributes'
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+      - ".gitattributes"
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +28,24 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Super Linter - Docker Focus
+        uses: super-linter/super-linter@v8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_CHECKOV: false
+          VALIDATE_ENV: false
+          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
+          VALIDATE_JSCPD: false
+          VALIDATE_TRIVY: false
+
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -40,59 +59,75 @@ jobs:
         build_type: [dev, full, prod]
 
     steps:
-    - name: Checkout.
-      uses: actions/checkout@v5
+      - name: Checkout.
+        uses: actions/checkout@v5
 
-    - name: Setup Docker Buildx.
-      uses: docker/setup-buildx-action@v3
+      - name: Setup Docker Buildx.
+        uses: docker/setup-buildx-action@v3
 
-    - name: Prepare tags.
-      id: tags
-      run: |
-        BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
-        BUILD_TYPE="${{ matrix.build_type }}"
-        PHP_VERSION="8.4"
-        echo "BASE_NAME=${BASE_NAME}" >> "$GITHUB_OUTPUT"
-        echo "PHP_VERSION=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Prepare tags.
+        id: tags
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+          PHP_VERSION: "8.4"
+        run: |
+          BASE_NAME="${REGISTRY}/${{ github.repository_owner }}/apache"
+          FLAVOR="debian-${BUILD_TYPE}"
 
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          # For PRs: use PR number
-          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
-        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          # For main: stable tags + short SHA
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE},${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
-        else
-          # Other branches: use branch name
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          echo "TAG=${BASE_NAME}:${PHP_VERSION}-debian-${BUILD_TYPE}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
-        fi
+          echo "BASE_NAME=${BASE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "PHP_VERSION=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
 
-    - name: Build Only.
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: ./src/flavor/Dockerfile.apache
-        push: false
-        tags: ${{ steps.tags.outputs.TAG }}
-        build-args: |
-          BUILD_TYPE=${{ matrix.build_type }}
-          PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
-        cache-from: type=gha,scope=${{ github.head_ref || github.ref_name }}-${{ matrix.build_type }}
-        provenance: false
-        sbom: false
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs: use PR number
+            PR_NUMBER=${{ github.event.number }}
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-pr-${PR_NUMBER}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # For main: stable tags + short SHA
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}"
+            TAG="${TAG},${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
+          else
+            # Other branches: use branch name
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-${BRANCH_NAME}"
+          fi
 
-    - name: Show result.
-      run: |
-        echo "🎉 Build completed for ${{ matrix.build_type }}!"
-        echo "Event: ${{ github.event_name }}"
-        echo "Tags: ${{ steps.tags.outputs.TAG }}"
-        if [[ "${{ github.event_name }}" == "push" ]]; then
-          echo "✅ Image pushed to registry"
-        else
-          echo "ℹ️ Image built but not pushed (PR mode)"
-        fi
+          echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
 
-    - name: Clear old GitHub Actions caches.
-      if: ${{ github.event_name == 'push' && matrix.build_type == 'full' }}
-      uses: easimon/wipe-cache@main
+      - name: Build Only.
+        uses: docker/build-push-action@v6
+        env:
+          SCOPE: ${{ github.head_ref || github.ref_name }}
+        with:
+          context: .
+          file: ./src/flavor/Dockerfile.apache
+          push: false
+          tags: ${{ steps.tags.outputs.TAG }}
+          build-args: |
+            BUILD_TYPE=${{ matrix.build_type }}
+            PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
+          cache-from: >-
+            type=gha,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
+          cache-to: >-
+            type=gha,mode=max,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
+          provenance: false
+          sbom: false
+
+      - name: Show result.
+        env:
+          BUILD_TYPE: ${{ matrix.build_type }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "🎉 Build completed for ${BUILD_TYPE}!"
+          echo "Event: ${EVENT_NAME}"
+          echo "Tags: ${{ steps.tags.outputs.TAG }}"
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            echo "✅ Image pushed to registry"
+          else
+            echo "ℹ️ Image built but not pushed (PR mode)"
+          fi
+
+      - name: Clear old GitHub Actions caches.
+        if: >-
+          ${{ github.event_name == 'push' && matrix.build_type == 'full' }}
+        uses: easimon/wipe-cache@main

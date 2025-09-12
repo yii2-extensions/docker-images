@@ -1,22 +1,33 @@
+---
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
+      cleanup_after:
+        description: "Run cleanup after build"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
       version:
-        description: 'Version to build (for example, 1.0.0)'
+        description: "Version to build (for example, 1.0.0)"
         required: true
         type: string
 
 concurrency:
-  group: release-${{ github.ref_type == 'tag' && github.ref_name || github.event.inputs.version }}
+  group: >-
+    release-${{ github.ref_type == 'tag' && github.ref_name ||
+    github.event.inputs.version }}
   cancel-in-progress: true
 
 name: release
 
 env:
-  PHP_VERSION: '8.4'
+  PHP_VERSION: "8.4"
   REGISTRY: ghcr.io
 
 jobs:
@@ -26,34 +37,34 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       should_build: ${{ steps.version.outputs.should_build }}
     steps:
-    - name: Extract version.
-      id: version
-      env:
-        INPUT_VERSION: ${{ github.event.inputs.version }}
-      run: |
-        set -Eeuo pipefail
-        VERSION=""
-        SHOULD_BUILD="false"
+      - name: Extract version.
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -Eeuo pipefail
+          VERSION=""
+          SHOULD_BUILD="false"
 
-        # From tag
-        if [[ "${GITHUB_REF_NAME:-}" == v* ]]; then
-          VERSION="${GITHUB_REF_NAME#v}"
-          SHOULD_BUILD="true"
-        # From workflow dispatch
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          VERSION="$INPUT_VERSION"
-          SHOULD_BUILD="true"
-        fi
+          # From tag
+          if [[ "${GITHUB_REF_NAME:-}" == v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            SHOULD_BUILD="true"
+          # From workflow dispatch
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="$INPUT_VERSION"
+            SHOULD_BUILD="true"
+          fi
 
-        # Validate semantic version
-        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
-          printf 'should_build=%s\n' "$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
-          echo "✅ Valid version: $VERSION"
-        else
-          echo "should_build=false" >> "$GITHUB_OUTPUT"
-          echo "⚠️ No valid version found"
-        fi
+          # Validate semantic version
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+            printf 'should_build=%s\n' "$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
+            echo "✅ Valid version: $VERSION"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ No valid version found"
+          fi
 
   build:
     needs: validate-version
@@ -70,66 +81,181 @@ jobs:
         build_type: [dev, full, prod]
 
     steps:
-    - name: Checkout.
-      uses: actions/checkout@v5
+      - name: Checkout.
+        uses: actions/checkout@v5
 
-    - name: Setup Docker Buildx.
-      uses: docker/setup-buildx-action@v3
+      - name: Setup Docker Buildx.
+        uses: docker/setup-buildx-action@v3
 
-    - name: Login to GitHub Container Registry.
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry.
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Compute build metadata.
-      id: meta
-      run: |
-        echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+      - name: Compute build metadata.
+        id: meta
+        run: |
+          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-    - name: Prepare tags.
-      id: tags
-      run: |
-        set -Eeuo pipefail
-        BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
-        VERSION="${{ needs.validate-version.outputs.version }}"
-        BUILD_TYPE="${{ matrix.build_type }}"
-        PHP_VERSION="${{ env.PHP_VERSION }}"
+      - name: Prepare tags.
+        id: tags
+        run: |
+          set -Eeuo pipefail
+          BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          BUILD_TYPE="${{ matrix.build_type }}"
+          PHP_VERSION="${{ env.PHP_VERSION }}"
 
-        # Main tags with version
-        TAGS="${BASE_NAME}:${VERSION}-${BUILD_TYPE}"
-        TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
+          # Main tags with version
+          TAGS=(
+            "${BASE_NAME}:${VERSION}-${BUILD_TYPE}"
+            "${BASE_NAME}:${PHP_VERSION}-${VERSION}-${BUILD_TYPE}"
+          )
 
-        # Latest tag for prod on version tags or validated manual releases
-        if [[ "$BUILD_TYPE" == "prod" && ( "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
-          TAGS="${TAGS},${BASE_NAME}:latest"
-          TAGS="${TAGS},${BASE_NAME}:${PHP_VERSION}-latest"
-        fi
+          # Latest tag for prod on version tags or validated manual releases
+          if [[ "$BUILD_TYPE" == "prod" && \
+              ( "${{ github.ref }}" =~ ^refs/tags/v || \
+                "${{ github.event_name }}" == "workflow_dispatch" ) ]]; then
+            TAGS+=("${BASE_NAME}:latest" "${BASE_NAME}:${PHP_VERSION}-latest")
+          fi
 
-        # Build type latest
-        if [[ "${{ github.ref }}" == refs/tags/v* || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          TAGS="${TAGS},${BASE_NAME}:${BUILD_TYPE}-latest"
-        fi
+          # Build type latest
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v || \
+              "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAGS+=("${BASE_NAME}:${BUILD_TYPE}-latest")
+          fi
 
-        printf 'tags=%s\n' "$TAGS" >> "$GITHUB_OUTPUT"
-        echo "📦 Tags: $TAGS"
+          {
+            echo 'tags<<EOF'
+            printf "%s\n" "${TAGS[@]}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          printf "📦 Tags:\n%s\n" "${TAGS[*]}"
 
-    - name: Build and Push.
-      uses: docker/build-push-action@v6
-      with:
-        build-args: |
-          BUILD_TYPE=${{ matrix.build_type }}
-          PHP_VERSION=${{ env.PHP_VERSION }}
-          VERSION=${{ needs.validate-version.outputs.version }}
-        cache-from: type=gha,scope=${{ matrix.build_type }}
-        cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
-        context: .
-        file: ./src/flavor/Dockerfile.apache
-        labels: |
-          org.opencontainers.image.created=${{ steps.meta.outputs.created }}
-          org.opencontainers.image.version=${{ needs.validate-version.outputs.version }}
-        provenance: true
-        push: true
-        sbom: true
-        tags: ${{ steps.tags.outputs.tags }}
+      - name: Build and Push.
+        uses: docker/build-push-action@v6
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          IMAGE_CREATED: ${{ steps.meta.outputs.created }}
+        with:
+          build-args: |
+            BUILD_TYPE=${{ matrix.build_type }}
+            PHP_VERSION=${{ env.PHP_VERSION }}
+            VERSION=${{ env.BUILD_VERSION }}
+          cache-from: type=gha,scope=${{ matrix.build_type }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
+          context: .
+          file: ./src/flavor/Dockerfile.apache
+          labels: |
+            org.opencontainers.image.created=${{ env.IMAGE_CREATED }}
+            org.opencontainers.image.version=${{ env.BUILD_VERSION }}
+          provenance: true
+          push: true
+          sbom: true
+          tags: ${{ steps.tags.outputs.tags }}
+
+  cleanup-old-versions:
+    name: Cleanup old versions
+    needs: [validate-version, build]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (
+        github.event.inputs.cleanup_after == 'true' ||
+        github.event_name == 'push'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    strategy:
+      matrix:
+        build_type: [dev, full, prod]
+
+    steps:
+      - name: Wait for images to be available
+        run: sleep 30
+
+      - name: >-
+          Cleanup ${{ matrix.build_type }} versions
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_TYPE: ${{ matrix.build_type }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repository: ${{ github.repository }}
+          package: apache
+          delete-tags: "*-${{ matrix.build_type }}"
+          exclude-tags: |
+            latest
+            ${{ matrix.build_type }}-latest
+            8.4-latest
+            ${{ env.BUILD_VERSION }}-${{ env.BUILD_TYPE }}
+            8.4-${{ env.BUILD_VERSION }}-${{ env.BUILD_TYPE }}
+          keep-n-tagged: 2
+          delete-untagged: true
+          keep-n-untagged: 0
+          older-than: 1 hour
+          validate: true
+          dry-run: false
+
+      - name: Report cleanup
+        if: always()
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_TYPE: ${{ matrix.build_type }}
+        run: |
+          {
+            echo "### 🧹 Cleanup post-release"
+            echo "**Build type:** ${{ env.BUILD_TYPE }}"
+            echo "**Version nueva:** ${{ env.BUILD_VERSION }}"
+            echo "**Versiones mantenidas:** 2"
+            echo "**Estado:** ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: Release Summary
+    needs: [validate-version, build, cleanup-old-versions]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate summary
+        env:
+          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          CLEANUP_RESULT: ${{ needs.cleanup-old-versions.result }}
+        run: |
+          {
+            echo "# 📦 Release Summary"
+            echo ""
+            echo "**Version:** ${{ env.BUILD_VERSION }}"
+            echo "**PHP Version:** ${{ env.PHP_VERSION }}"
+            echo "**Registry:** ${{ env.REGISTRY }}"
+            echo ""
+            echo "## 🗂️ Build Status"
+            echo "| Build Type | Status |"
+            echo "|------------|--------|"
+            echo "| dev | ${{ env.BUILD_RESULT }} |"
+            echo "| full | ${{ env.BUILD_RESULT }} |"
+            echo "| prod | ${{ env.BUILD_RESULT }} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "${{ env.CLEANUP_RESULT }}" != "skipped" ]]; then
+            {
+              echo "## 🧹 Cleanup"
+              echo "Status: ${{ env.CLEANUP_RESULT }}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          {
+            echo ""
+            echo "---"
+            echo "*Released at $(date -u +%Y-%m-%dT%H:%M:%SZ)*"
+          } >> "$GITHUB_STEP_SUMMARY"

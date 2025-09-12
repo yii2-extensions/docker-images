@@ -1,3 +1,4 @@
+#!/bin/bash
 #==============================================================================
 # Wait for Service
 #==============================================================================
@@ -12,7 +13,7 @@ wait_for_service() {
 
     log INFO "Waiting for ${service} at ${host}:${port} (timeout: ${timeout}s)..."
 
-    while ! (exec 3<>/dev/tcp/${host}/${port}) 2>/dev/null; do
+    while ! (exec 3<>/dev/tcp/"${host}"/"${port}") 2>/dev/null; do
         if [[ $elapsed -ge $timeout ]]; then
             log ERROR "${service} failed to respond within ${timeout} seconds"
             [[ "${FAIL_ON_SERVICE_TIMEOUT:-false}" == "true" ]] && exit 1

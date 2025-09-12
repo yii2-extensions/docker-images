@@ -1,3 +1,4 @@
+#!/bin/bash
 #==============================================================================
 # Health create endpoint
 #==============================================================================
@@ -24,7 +25,7 @@ health_create_endpoint() {
     fi
 
     # Write the health endpoint file
-    cat > "$health_file" << 'HEALTH_PHP'
+    cat >"$health_file" <<'HEALTH_PHP'
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
