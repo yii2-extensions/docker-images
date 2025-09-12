@@ -11,6 +11,9 @@ ARG PHP_VERSION=8.4
 #------------------------------------------------------------------------------
 FROM php:${PHP_VERSION}-fpm-trixie AS base
 
+# Set shell options for better error handling
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
     # Apache Configuration
@@ -81,7 +84,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     # SSL Configuration
     SSL_AUTO_GENERATE=true
 
-# Layer 1: System packages + gosu
+# Layer 01: System packages + gosu
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
     brotli \
@@ -95,30 +98,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /etc/apache2/sites-enabled/000-default.conf \
     && rm -rf /var/lib/apt/lists/*
 
-# Layer 2: Install php-extension-installer tool
+# Layer 02: Install php-extension-installer tool
 ADD --chmod=0755 \
     https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     /usr/local/bin/
 
-# Layer 3: Core PHP extensions for Yii2
+# Layer 03: Base extensions
 RUN install-php-extensions \
+    @composer \
     apcu \
     bcmath \
+    gd \
+    imagick \
     intl \
     opcache \
     pcntl \
-    zip \
-    imagick \
-    gd \
-    @composer
-
-# Layer 4: Database extensions
-RUN install-php-extensions \
     pdo_mysql \
     pdo_pgsql \
-    redis
+    redis \
+    zip
 
-# Layer 5: Create directories and set permissions
+# Layer 04: Create directories and set permissions
 RUN mkdir -p \
     ${APACHE_LOCK_DIR} \
     /etc/apache2/ssl \
@@ -144,7 +144,7 @@ RUN mkdir -p \
     && chmod 750 /etc/apache2/ssl \
     && chmod 755 /var/cache/apache2
 
-# Layer 6: Configure sudo for www-data
+# Layer 05: Configure sudo for www-data
 RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
     && chmod 0440 /etc/sudoers.d/www-data
 
@@ -153,18 +153,12 @@ RUN echo "www-data ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/www-data \
 #------------------------------------------------------------------------------
 FROM base AS dev
 
-# Layer 7: Development-only extensions
+# Layer 06: Development extensions
 RUN install-php-extensions \
-    xdebug
-
-# Layer 8: Additional database extensions for development
-RUN install-php-extensions \
+    memcached \
     mongodb \
-    memcached
-
-# Layer 9: Development utilities
-RUN install-php-extensions \
     soap \
+    xdebug \
     yaml
 
 #------------------------------------------------------------------------------
@@ -172,16 +166,13 @@ RUN install-php-extensions \
 #------------------------------------------------------------------------------
 FROM dev AS full
 
-# Layer 10: Oracle extensions
+# Layer 07: Full extensions
 RUN install-php-extensions \
     oci8 \
-    pdo_oci
-
-# Layer 11: Additional testing extensions
-RUN install-php-extensions \
+    pdo_oci \
     tidy
 
-# Layer 12: Microsoft SQL Server support
+# Layer 08: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
 RUN set -ex \
     && apt-get update \
@@ -204,7 +195,7 @@ RUN set -ex \
 #==============================================================================
 FROM base AS prod
 
-# Layer 13: Production build already has all necessary extensions from base
+# Layer 09: Production build already has all necessary extensions from base
 RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
     && rm -rf /var/www/html/*
 
@@ -217,29 +208,29 @@ ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
-# Layer 14: Copy Apache configuration files
+# Layer 10: Copy Apache configuration files
 COPY src/etc/apache2/ /etc/apache2/
 
-# Layer 15: Copy PHP Configurations
+# Layer 11: Copy PHP Configurations
 COPY src/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY src/etc/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 
-# Layer 16: Copy Supervisor configurations
+# Layer 12: Copy Supervisor configurations
 COPY src/supervisor/conf.d/ /etc/supervisor/conf.d/
 COPY src/supervisor/supervisord.conf /etc/supervisor/
 
-# Layer 17: Copy scripts
+# Layer 13: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
 COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
 
-# Layer 18: Apache configuration
+# Layer 14: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
     && a2enmod brotli \
     && a2enmod mpm_event \
     && a2enmod filter rewrite headers expires ssl proxy proxy_fcgi http2 \
     && a2dissite 000-default
 
-# Layer 19: Enable Apache configurations
+# Layer 15: Enable Apache configurations
 RUN a2enconf \
     01-performance.conf \
     02-security.conf \
@@ -249,7 +240,7 @@ RUN a2enconf \
     06-logging.conf \
     07-rate-limiting.conf
 
-# Layer 20: Make scripts executable
+# Layer 16: Make scripts executable
 RUN chmod +x /usr/local/bin/entrypoint
 
 WORKDIR /var/www/app
