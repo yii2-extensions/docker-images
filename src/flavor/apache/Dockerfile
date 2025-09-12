@@ -36,6 +36,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     APACHE_THREAD_LIMIT=64 \
     APACHE_THREADS_PER_CHILD=25 \
     APACHE_LISTEN_BACKLOG=511 \
+    # Composer Configuration
+    COMPOSER_HOME=/var/www/.composer \
     # Apache Logging Configuration
     APACHE_ACCESS_LOG=/proc/self/fd/1 \
     # Apache optional: Enable HTTP to HTTPS redirect
@@ -95,7 +97,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     vim-tiny \
     && apt-get clean \
-    && rm -rf /etc/apache2/sites-enabled/000-default.conf \
     && rm -rf /var/lib/apt/lists/*
 
 # Layer 02: Install php-extension-installer tool
@@ -239,9 +240,6 @@ RUN a2enconf \
     05-php-fpm.conf \
     06-logging.conf \
     07-rate-limiting.conf
-
-# Layer 16: Make scripts executable
-RUN chmod +x /usr/local/bin/entrypoint
 
 WORKDIR /var/www/app
 
