@@ -2,21 +2,21 @@
 on:
   pull_request:
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - '.gitignore'
-      - '.gitattributes'
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+      - ".gitattributes"
 
   push:
     branches:
       - main
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - '.gitignore'
-      - '.gitattributes'
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+      - ".gitattributes"
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
