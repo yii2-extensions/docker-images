@@ -41,8 +41,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull Super-Linter image
+        run: docker pull ghcr.io/super-linter/super-linter:slim-v8.1.0
+
       - name: Super Linter - Docker Focus
-        uses: super-linter/super-linter@v8
+        uses: super-linter/super-linter@v8.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_CHECKOV: false
@@ -106,7 +120,7 @@ jobs:
           SCOPE: ${{ github.head_ref || github.ref_name }}
         with:
           context: .
-          file: ./src/flavor/Dockerfile.apache
+          file: ./src/flavor/apache/Dockerfile
           push: false
           tags: ${{ steps.tags.outputs.TAG }}
           build-args: |
