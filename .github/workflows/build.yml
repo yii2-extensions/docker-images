@@ -71,22 +71,25 @@ jobs:
           BUILD_TYPE: ${{ matrix.build_type }}
           PHP_VERSION: "8.4"
         run: |
-          BASE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
+          BASE_NAME="${REGISTRY}/${{ github.repository_owner }}/apache"
+          FLAVOR="debian-${BUILD_TYPE}"
+
           echo "BASE_NAME=${BASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "PHP_VERSION=${{ env.PHP_VERSION }}" >> "$GITHUB_OUTPUT"
+          echo "PHP_VERSION=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
 
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             # For PRs: use PR number
-            TAG="${BASE_NAME}:${{ env.PHP_VERSION }}-debian-${{ env.BUILD_TYPE }}-pr-${{ github.event.number }}"
+            PR_NUMBER=${{ github.event.number }}
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-pr-${PR_NUMBER}"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             # For main: stable tags + short SHA
             SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-            TAG="${BASE_NAME}:${{ env.PHP_VERSION }}-debian-${{ env.BUILD_TYPE }}"
-            TAG="${TAG},${BASE_NAME}:${{ env.PHP_VERSION }}-debian-${{ env.BUILD_TYPE }}-sha-${SHORT_SHA}"
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}"
+            TAG="${TAG},${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
           else
             # Other branches: use branch name
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-            TAG="${BASE_NAME}:${{ env.PHP_VERSION }}-debian-${{ env.BUILD_TYPE }}-${BRANCH_NAME}"
+            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-${BRANCH_NAME}"
           fi
 
           echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
@@ -94,7 +97,7 @@ jobs:
       - name: Build Only.
         uses: docker/build-push-action@v6
         env:
-          CACHE_SCOPE: ${{ github.head_ref || github.ref_name }}-${{ matrix.build_type }}
+          SCOPE: ${{ github.head_ref || github.ref_name }}
         with:
           context: .
           file: ./src/flavor/Dockerfile.apache
@@ -104,9 +107,9 @@ jobs:
             BUILD_TYPE=${{ matrix.build_type }}
             PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
           cache-from: >-
-            type=gha,scope=${{ env.CACHE_SCOPE }}
+            type=gha,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
           cache-to: >-
-            type=gha,mode=max,scope=${{ env.CACHE_SCOPE }}
+            type=gha,mode=max,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
           provenance: false
           sbom: false
 
@@ -115,10 +118,10 @@ jobs:
           BUILD_TYPE: ${{ matrix.build_type }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          echo "🎉 Build completed for ${{ env.BUILD_TYPE }}!"
-          echo "Event: ${{ env.EVENT_NAME }}"
+          echo "🎉 Build completed for ${BUILD_TYPE}!"
+          echo "Event: ${EVENT_NAME}"
           echo "Tags: ${{ steps.tags.outputs.TAG }}"
-          if [[ "${{ env.EVENT_NAME }}" == "push" ]]; then
+          if [[ "${EVENT_NAME}" == "push" ]]; then
             echo "✅ Image pushed to registry"
           else
             echo "ℹ️ Image built but not pushed (PR mode)"
