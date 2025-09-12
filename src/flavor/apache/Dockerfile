@@ -205,6 +205,7 @@ RUN apt-get purge -y --auto-remove git 2>/dev/null || true \
 #==============================================================================
 FROM ${BUILD_TYPE} AS final
 
+ARG BUILD_TYPE
 ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm
 
