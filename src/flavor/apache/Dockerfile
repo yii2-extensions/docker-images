@@ -222,7 +222,7 @@ COPY src/supervisor/supervisord.conf /etc/supervisor/
 
 # Layer 13: Copy scripts
 COPY src/script/common/ /usr/local/bin/common/
-COPY src/script/entrypoint.sh /usr/local/bin/entrypoint
+COPY --chmod=0755 src/script/entrypoint.sh /usr/local/bin/entrypoint
 
 # Layer 14: Apache configuration
 RUN a2dismod mpm_prefork 2>/dev/null || true \
