@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 -->
 <p align="center">
-    <a href="https://github.com/yii2-extensions/template" target="_blank">
+    <a href="https://github.com/yii2-extensions/docker-images" target="_blank">
         <img src="https://www.yiiframework.com/image/yii_logo_light.svg" alt="Yii Framework">
     </a>
     <h1 align="center">Docker images</h1>
