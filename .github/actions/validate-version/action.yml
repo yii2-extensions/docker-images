@@ -1,0 +1,117 @@
+name: Validate Version
+
+description: >-
+  Validates and extracts version from git tags or workflow inputs.
+  Supports semantic versioning validation.
+
+inputs:
+  allow-prerelease:
+    description: Allow pre-release versions (for example, 1.0.0-beta.1).
+    default: "false"
+    required: false
+  input-version:
+    description: Manual version input (from workflow_dispatch).
+    required: false
+
+outputs:
+  is_prerelease:
+    description: Whether this is a pre-release version.
+    value: ${{ steps.validate.outputs.is_prerelease }}
+  should_build:
+    description: Whether the build should proceed.
+    value: ${{ steps.validate.outputs.should_build }}
+  source:
+    description: Source of the version (tag, manual, or none).
+    value: ${{ steps.validate.outputs.source }}
+  version:
+    description: Extracted and validated version.
+    value: ${{ steps.validate.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Extract and validate version
+      id: validate
+      shell: bash
+      env:
+        ALLOW_PRERELEASE: ${{ inputs.allow-prerelease }}
+        EVENT_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+        EVENT_NAME: ${{ github.event_name }}
+        INPUT_VERSION: ${{ inputs.input-version }}
+        REF_NAME: ${{ github.ref_name }}
+      run: |
+        set -Eeuo pipefail
+
+        VERSION=""
+        SHOULD_BUILD="false"
+        IS_PRERELEASE="false"
+        SOURCE="none"
+
+        # Extract version based on trigger
+        if [[ "${REF_NAME:-}" == v* ]]; then
+          # From git tag
+          VERSION="${REF_NAME#v}"
+          SOURCE="tag"
+          echo "📍 Version from tag: $VERSION"
+        elif [[ "$EVENT_DISPATCH" == "true" && -n "$INPUT_VERSION" ]]; then
+          # From manual input
+          VERSION="$INPUT_VERSION"
+          SOURCE="manual"
+          echo "📍 Version from manual input: $VERSION"
+        else
+          echo "⚠️ No version source found"
+          echo "version=" >> "$GITHUB_OUTPUT"
+          echo "should_build=false" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          echo "source=none" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Validate semantic version patterns
+        SEMVER_REGEX="^[0-9]+\.[0-9]+\.[0-9]+$"
+        PRERELEASE_REGEX="^[0-9]+\.[0-9]+\.[0-9]+-.+$"
+
+        if [[ "$VERSION" =~ $SEMVER_REGEX ]]; then
+          # Valid stable version
+          SHOULD_BUILD="true"
+          IS_PRERELEASE="false"
+          echo "✅ Valid stable version: $VERSION"
+        elif [[ "$ALLOW_PRERELEASE" == "true" ]] && \
+          [[ "$VERSION" =~ $PRERELEASE_REGEX ]]; then
+          # Valid pre-release version
+          SHOULD_BUILD="true"
+          IS_PRERELEASE="true"
+          echo "✅ Valid pre-release version: $VERSION"
+        else
+          # Invalid version format
+          SHOULD_BUILD="false"
+          echo "❌ Invalid version format: $VERSION"
+          echo "Expected: X.Y.Z or X.Y.Z-suffix (if prerelease allowed)"
+        fi
+
+        if [[ "$IS_PRERELEASE" == "true" ]]; then
+          TYPE="Pre-release"
+        else
+          TYPE="Stable"
+        fi
+
+        if [[ "$SHOULD_BUILD" == "true" ]]; then
+          BUILD_STATUS="✅ Yes"
+        else
+          BUILD_STATUS="❌ No"
+        fi
+
+        # Output results
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "should_build=$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
+        echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+        echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
+
+        # Summary for GitHub Actions UI
+        {
+          echo "### 🏷️ Version Validation"
+          echo "- **Version:** \`$VERSION\`"
+          echo "- **Source:** $SOURCE"
+          echo "- **Type:** $TYPE"
+          echo "- **Should Build:** $BUILD_STATUS"
+        } >> "$GITHUB_STEP_SUMMARY"
