@@ -2,21 +2,21 @@
 on:
   pull_request:
     paths-ignore:
+      - ".gitattributes"
+      - ".gitignore"
+      - "CHANGELOG.md"
       - "docs/**"
       - "README.md"
-      - "CHANGELOG.md"
-      - ".gitignore"
-      - ".gitattributes"
 
   push:
     branches:
       - main
     paths-ignore:
+      - ".gitattributes"
+      - ".gitignore"
+      - "CHANGELOG.md"
       - "docs/**"
       - "README.md"
-      - "CHANGELOG.md"
-      - ".gitignore"
-      - ".gitattributes"
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -28,50 +28,8 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-
-    permissions:
-      checks: write
-      contents: read
-      statuses: write
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-docker-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-docker-
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Pull Super-Linter image
-        run: docker pull ghcr.io/super-linter/super-linter:slim-v8.1.0
-
-      - name: Super Linter - Docker Focus
-        uses: super-linter/super-linter/slim@v8.1.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_CHECKOV: false
-          VALIDATE_ENV: false
-          VALIDATE_GIT_MERGE_CONFLICT_MARKERS: false
-          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
-          VALIDATE_JSCPD: false
-          VALIDATE_TRIVY: false
-
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      actions: write
-      contents: read
 
     strategy:
       fail-fast: false
