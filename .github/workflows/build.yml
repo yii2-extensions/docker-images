@@ -45,7 +45,7 @@ jobs:
 
       - name: Prepare Tags.
         id: tags
-        uses: ./.github/actions/prepare-docker-tags
+        uses: ./.github/actions/prepare-docker-tags@main
         with:
           base-name: >-
             ${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.tag-prefix }}
