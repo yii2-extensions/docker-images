@@ -106,6 +106,10 @@ jobs:
           file: ./src/flavor/apache/Dockerfile
           labels: |
             org.opencontainers.image.created=${{ env.IMAGE_CREATED }}
+            org.opencontainers.image.ref.name=${{ github.ref_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.BUILD_VERSION }}
           provenance: true
           push: true
@@ -156,9 +160,8 @@ jobs:
               echo ""
 
               if [[ "${{ env.BUILD_RESULT }}" == "success" ]]; then
-                echo "## 📋 Generated Tags"
+                echo "## 🏷️ Generated Tags"
                 echo "- \`8.4-debian-{build_type}-v${{ env.VERSION }}\`"
-                echo "- \`8.4-debian-{build_type}-sha-{commit}\`"
                 if [[ "${{ env.IS_PRERELEASE }}" == "false" ]]; then
                   echo "- \`latest\` (prod only)"
                 fi
