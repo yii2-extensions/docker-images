@@ -77,7 +77,7 @@ runs:
           IS_PRERELEASE="false"
           echo "✅ Valid stable version: $VERSION"
         elif [[ "$ALLOW_PRERELEASE" == "true" ]] && \
-             [[ "$VERSION" =~ $PRERELEASE_REGEX ]]; then
+          [[ "$VERSION" =~ $PRERELEASE_REGEX ]]; then
           # Valid pre-release version
           SHOULD_BUILD="true"
           IS_PRERELEASE="true"
