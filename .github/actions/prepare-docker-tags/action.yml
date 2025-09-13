@@ -1,0 +1,75 @@
+name: Prepare Docker Tags
+
+description: >-
+  Prepares Docker image tags based on context
+  (PR, main branch, or feature branch)
+
+inputs:
+  base-name:
+    description: Base name for the Docker image.
+    required: true
+  build-type:
+    description: Build type (dev, full, prod).
+    required: true
+  php-version:
+    description: PHP version.
+    default: "8.4"
+    required: false
+  flavor-prefix:
+    description: Flavor prefix.
+    default: debian
+    required: false
+
+outputs:
+  tags:
+    description: Generated Docker tags.
+    value: ${{ steps.generate.outputs.tags }}
+  php-version:
+    description: PHP version used.
+    value: ${{ steps.generate.outputs.php-version }}
+  flavor:
+    description: Full flavor string.
+    value: ${{ steps.generate.outputs.flavor }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate Tags.
+      id: generate
+      shell: bash
+      env:
+        BASE_NAME: ${{ inputs.base-name }}
+        BUILD_TYPE: ${{ inputs.build-type }}
+        PHP_VERSION: ${{ inputs.php-version }}
+        FLAVOR_PREFIX: ${{ inputs.flavor-prefix }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.number }}
+        REF: ${{ github.ref }}
+        SHA: ${{ github.sha }}
+      run: |
+        # Prepare flavor
+        FLAVOR="${FLAVOR_PREFIX}-${BUILD_TYPE}"
+
+        # Output common values
+        echo "php-version=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
+        echo "flavor=${FLAVOR}" >> "$GITHUB_OUTPUT"
+
+        # Generate tags based on context
+        if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+          # For PRs: use PR number
+          TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-pr-${PR_NUMBER}"
+        elif [[ "${REF}" == "refs/heads/main" ]]; then
+          # For main: stable tags + short SHA
+          SHORT_SHA=$(echo "${SHA}" | cut -c1-7)
+          TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}"
+          TAG+=",${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
+        else
+          # Other branches: use branch name
+          BRANCH_NAME="${REF#refs/heads/}"
+          # Sanitize branch name for Docker tag
+          BRANCH_NAME=$(echo "${BRANCH_NAME}" | \
+            sed 's/[^a-zA-Z0-9._-]/-/g')
+          TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-${BRANCH_NAME}"
+        fi
+
+        echo "tags=${TAG}" >> "$GITHUB_OUTPUT"

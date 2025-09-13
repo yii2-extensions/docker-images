@@ -25,6 +25,7 @@ concurrency:
 name: build
 
 env:
+  PHP_VERSION: "8.4"
   REGISTRY: ghcr.io
 
 jobs:
@@ -43,34 +44,14 @@ jobs:
       - name: Setup Docker Buildx.
         uses: docker/setup-buildx-action@v3
 
-      - name: Prepare tags.
+      - name: Prepare Tags.
         id: tags
-        env:
-          BUILD_TYPE: ${{ matrix.build_type }}
-          PHP_VERSION: "8.4"
-        run: |
-          BASE_NAME="${REGISTRY}/${{ github.repository_owner }}/apache"
-          FLAVOR="debian-${BUILD_TYPE}"
-
-          echo "BASE_NAME=${BASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "PHP_VERSION=${PHP_VERSION}" >> "$GITHUB_OUTPUT"
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs: use PR number
-            PR_NUMBER=${{ github.event.number }}
-            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-pr-${PR_NUMBER}"
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # For main: stable tags + short SHA
-            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}"
-            TAG="${TAG},${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
-          else
-            # Other branches: use branch name
-            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-            TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-${BRANCH_NAME}"
-          fi
-
-          echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/prepare-docker-tags
+        with:
+          base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
+          build-type: ${{ matrix.build_type }}
+          flavor-prefix: "debian"
+          php-version: "${{ env.PHP_VERSION }}"
 
       - name: Build Only.
         uses: docker/build-push-action@v6
@@ -80,10 +61,10 @@ jobs:
           context: .
           file: ./src/flavor/apache/Dockerfile
           push: false
-          tags: ${{ steps.tags.outputs.TAG }}
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             BUILD_TYPE=${{ matrix.build_type }}
-            PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
+            PHP_VERSION=${{ env.PHP_VERSION }}
           cache-from: >-
             type=gha,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
           cache-to: >-
@@ -98,7 +79,7 @@ jobs:
         run: |
           echo "🎉 Build completed for ${BUILD_TYPE}!"
           echo "Event: ${EVENT_NAME}"
-          echo "Tags: ${{ steps.tags.outputs.TAG }}"
+          echo "Tags: ${{ steps.tags.outputs.tags }}"
           if [[ "${EVENT_NAME}" == "push" ]]; then
             echo "✅ Image pushed to registry"
           else
