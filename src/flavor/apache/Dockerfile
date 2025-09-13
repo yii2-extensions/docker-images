@@ -241,6 +241,23 @@ RUN a2enconf \
     06-logging.conf \
     07-rate-limiting.conf
 
+# Image metadata labels
+LABEL apache.version="2.4" \
+    build.type="${BUILD_TYPE}" \
+    debian.version="trixie" \
+    maintainer="yii2-extensions" \
+    php.version="${PHP_VERSION}" \
+    org.opencontainers.image.authors="@terabytesoftw" \
+    org.opencontainers.image.base.name="php:${PHP_VERSION}-fpm-trixie" \
+    org.opencontainers.image.description="Debian Trixie + PHP ${PHP_VERSION} FPM + Apache with HTTP/2 support for Yii2 applications. Build type: ${BUILD_TYPE}" \
+    org.opencontainers.image.documentation="https://github.com/yii2-extensions/apache#readme" \
+    org.opencontainers.image.licenses="BSD-3-Clause" \
+    org.opencontainers.image.source="https://github.com/yii2-extensions/apache" \
+    org.opencontainers.image.title="Yii2 Apache Docker Image" \
+    org.opencontainers.image.url="https://github.com/yii2-extensions/apache" \
+    org.opencontainers.image.vendor="yii2-extensions" \
+    org.opencontainers.image.version="${VERSION}"
+
 WORKDIR /var/www/app
 
 EXPOSE 80 443
