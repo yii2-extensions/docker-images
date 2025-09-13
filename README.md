@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD041 --> 
+<!-- markdownlint-disable MD041 -->
 <p align="center">
     <a href="https://github.com/yii2-extensions/template" target="_blank">
         <img src="https://www.yiiframework.com/image/yii_logo_light.svg" alt="Yii Framework">
@@ -7,7 +7,6 @@
     <br>
 </p>
 <!-- markdownlint-enable MD041 -->
-
 
 ## Package information
 
