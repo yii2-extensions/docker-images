@@ -45,12 +45,12 @@ jobs:
 
       - name: Prepare Tags.
         id: tags
-        uses: ./.github/actions/prepare-docker-tags@main
+        uses: ./.github/actions/prepare-docker-tags
         with:
-          base-name: >-
-            ${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.tag-prefix }}
+          base-name: "${REGISTRY}/${{ github.repository_owner }}/apache"
           build-type: ${{ matrix.build_type }}
-          php-version: ${{ inputs.php-version }}
+          flavor-prefix: "debian-${{ matrix.build_type }}"
+          php-version: "8.4"
 
       - name: Build Only.
         uses: docker/build-push-action@v6
