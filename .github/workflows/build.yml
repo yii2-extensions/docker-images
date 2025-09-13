@@ -50,7 +50,7 @@ jobs:
         with:
           base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
           build-type: ${{ matrix.build_type }}
-          flavor-prefix: "debian-${{ matrix.build_type }}"
+          flavor-prefix: "debian"
           php-version: "${{ env.PHP_VERSION }}"
 
       - name: Build Only.
