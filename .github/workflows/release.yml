@@ -111,9 +111,9 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.BUILD_VERSION }}
-          provenance: true
+          provenance: false
           push: true
-          sbom: true
+          sbom: false
           tags: ${{ steps.tags.outputs.tags }}
 
       - name: Show build result
