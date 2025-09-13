@@ -47,7 +47,7 @@ jobs:
         id: tags
         uses: ./.github/actions/prepare-docker-tags
         with:
-          base-name: "${REGISTRY}/${{ github.repository_owner }}/apache"
+          base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
           build-type: ${{ matrix.build_type }}
           flavor-prefix: "debian-${{ matrix.build_type }}"
           php-version: "8.4"
