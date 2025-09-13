@@ -5,6 +5,11 @@ on:
 
 name: linter
 
+permissions:
+  checks: write
+  contents: read
+  statuses: write
+
 jobs:
   linter:
     uses: php-forge/actions/.github/workflows/super-linter.yml@main
