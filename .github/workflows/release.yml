@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+
   workflow_dispatch:
     inputs:
       version:
@@ -27,10 +28,10 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      version: ${{ steps.validate.outputs.version }}
-      should_build: ${{ steps.validate.outputs.should_build }}
       is_prerelease: ${{ steps.validate.outputs.is_prerelease }}
+      should_build: ${{ steps.validate.outputs.should_build }}
       source: ${{ steps.validate.outputs.source }}
+      version: ${{ steps.validate.outputs.version }}
 
     steps:
       - name: Checkout

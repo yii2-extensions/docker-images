@@ -50,7 +50,7 @@ jobs:
 
       - name: Prepare Tags.
         id: tags
-        uses: ./.github/actions/prepare-docker-tags@main
+        uses: ./.github/actions/prepare-docker-tags
         with:
           base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
           build-type: ${{ matrix.build_type }}
