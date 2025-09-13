@@ -22,7 +22,7 @@ Production-ready Docker images for Yii2 applications with Apache, PHP-FPM, and H
 
 ### Quick Start
 
-Pull and run the image:
+Pull and run the image.
 
 ```bash
 # Development build with Xdebug
@@ -37,8 +37,10 @@ docker run -d -p 8080:80 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8
 
 ### Docker Compose
 
-Create a `docker-compose.yml` file:
+Create a `docker-compose.yml` file.
 
+<!-- editorconfig-checker-disable -->
+<!-- prettier-ignore-start -->
 ```yaml
 version: '3.8'
 
@@ -54,31 +56,39 @@ services:
       - YII_ENV=dev
       - YII_DEBUG=1
 ```
+<!-- prettier-ignore-end -->
+<!-- editorconfig-checker-enable -->
 
 ### Build Variants
 
 #### Development (`dev`)
+
 ```bash
 docker pull ghcr.io/yii2-extensions/apache:8.4-debian-dev-v1.0.0
 ```
+
 - Error reporting enabled with detailed logging
 - Node.js integration for asset compilation
 - OPcache with revalidation for development workflow
 - PHP `8.4` with Xdebug, Memcached, MongoDB, SOAP, YAML
 
 #### Production (`prod`)
+
 ```bash
 docker pull ghcr.io/yii2-extensions/apache:8.4-debian-prod-v1.0.0
 ```
+
 - Minimal extension set with maximum performance
 - OPcache optimizations with disabled timestamp validation
 - Optimized for container orchestration platforms
 - Security hardening with reduced attack surface
 
 #### Full Testing (`full`)
+
 ```bash
 docker pull ghcr.io/yii2-extensions/apache:8.4-debian-full-v1.0.0
 ```
+
 - All development extensions plus OCI8, SQL Server, Tidy
 - Complete extension matrix for comprehensive testing
 - Microsoft SQL Server ODBC drivers and PDO support
