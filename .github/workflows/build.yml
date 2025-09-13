@@ -64,7 +64,7 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             BUILD_TYPE=${{ matrix.build_type }}
-            PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
+            PHP_VERSION=${{ env.PHP_VERSION }}
           cache-from: >-
             type=gha,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
           cache-to: >-
