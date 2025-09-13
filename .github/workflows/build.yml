@@ -27,12 +27,9 @@ name: build
 env:
   REGISTRY: ghcr.io
 
+jobs:
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      actions: write
-      contents: read
 
     strategy:
       fail-fast: false
