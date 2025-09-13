@@ -19,22 +19,6 @@ inputs:
     description: Flavor prefix.
     default: debian
     required: false
-  event-name:
-    description: GitHub event name.
-    default: ${{ github.event_name }}
-    required: false
-  pr-number:
-    description: Pull request number.
-    default: ${{ github.event.number }}
-    required: false
-  ref:
-    description: Git reference.
-    default: ${{ github.ref }}
-    required: false
-  sha:
-    description: Git SHA.
-    default: ${{ github.sha }}
-    required: false
 
 outputs:
   tags:
@@ -58,10 +42,10 @@ runs:
         BUILD_TYPE: ${{ inputs.build-type }}
         PHP_VERSION: ${{ inputs.php-version }}
         FLAVOR_PREFIX: ${{ inputs.flavor-prefix }}
-        EVENT_NAME: ${{ inputs.event-name }}
-        PR_NUMBER: ${{ inputs.pr-number }}
-        REF: ${{ inputs.ref }}
-        SHA: ${{ inputs.sha }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_NUMBER: ${{ github.event.number }}
+        REF: ${{ github.ref }}
+        SHA: ${{ github.sha }}
       run: |
         # Prepare flavor
         FLAVOR="${FLAVOR_PREFIX}-${BUILD_TYPE}"
