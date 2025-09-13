@@ -5,13 +5,12 @@ on:
 
 name: linter
 
-permissions:
-  checks: write
-  contents: read
-  statuses: write
-
 jobs:
   linter:
     uses: php-forge/actions/.github/workflows/super-linter.yml@main
+    permissions:
+      checks: write
+      contents: read
+      statuses: write
     secrets:
       AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
