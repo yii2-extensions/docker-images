@@ -108,6 +108,8 @@ jobs:
             org.opencontainers.image.created=${{ env.IMAGE_CREATED }}
             org.opencontainers.image.ref.name=${{ github.ref_name }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.BUILD_VERSION }}
           provenance: true
           push: true
