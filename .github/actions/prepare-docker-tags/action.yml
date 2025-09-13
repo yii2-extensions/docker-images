@@ -62,7 +62,7 @@ runs:
           # For main: stable tags + short SHA
           SHORT_SHA=$(echo "${SHA}" | cut -c1-7)
           TAG="${BASE_NAME}:${PHP_VERSION}-${FLAVOR}"
-          TAG="${TAG},${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
+          TAG+=",${BASE_NAME}:${PHP_VERSION}-${FLAVOR}-sha-${SHORT_SHA}"
         else
           # Other branches: use branch name
           BRANCH_NAME="${REF#refs/heads/}"
