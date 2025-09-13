@@ -25,6 +25,7 @@ concurrency:
 name: build
 
 env:
+  PHP_VERSION: "8.4"
   REGISTRY: ghcr.io
 
 jobs:
@@ -50,7 +51,7 @@ jobs:
           base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
           build-type: ${{ matrix.build_type }}
           flavor-prefix: "debian-${{ matrix.build_type }}"
-          php-version: "8.4"
+          php-version: "${{ env.PHP_VERSION }}"
 
       - name: Build Only.
         uses: docker/build-push-action@v6
