@@ -60,7 +60,7 @@ jobs:
           context: .
           file: ./src/flavor/apache/Dockerfile
           push: false
-          tags: ${{ steps.tags.outputs.TAG }}
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             BUILD_TYPE=${{ matrix.build_type }}
             PHP_VERSION=${{ steps.tags.outputs.PHP_VERSION }}
@@ -78,7 +78,7 @@ jobs:
         run: |
           echo "🎉 Build completed for ${BUILD_TYPE}!"
           echo "Event: ${EVENT_NAME}"
-          echo "Tags: ${{ steps.tags.outputs.TAG }}"
+          echo "Tags: ${{ steps.tags.outputs.tags }}"
           if [[ "${EVENT_NAME}" == "push" ]]; then
             echo "✅ Image pushed to registry"
           else
