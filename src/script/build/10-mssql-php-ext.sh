@@ -8,7 +8,7 @@ main() {
     mssql_add_apt_repo
     mssql_install_odbc_runtime
 
-    read -r -a phpize_deps <<< "${PHPIZE_DEPS:-}"
+    read -r -a phpize_deps <<<"${PHPIZE_DEPS:-}"
     apt-get install -y --no-install-recommends unixodbc-dev "${phpize_deps[@]}"
 
     printf '\n' | pecl install sqlsrv-5.12.0
