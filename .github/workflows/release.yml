@@ -161,7 +161,7 @@ jobs:
 
               if [[ "${{ env.BUILD_RESULT }}" == "success" ]]; then
                 echo "## 🏷️ Generated Tags"
-                echo "- \`8.5-debian-{build_type}-v${{ env.VERSION }}\`"
+                echo "- \`${{ env.PHP_VERSION }}-debian-{build_type}-v${{ env.VERSION }}\`"
                 if [[ "${{ env.IS_PRERELEASE }}" == "false" ]]; then
                   echo "- \`latest\` (prod only)"
                 fi
