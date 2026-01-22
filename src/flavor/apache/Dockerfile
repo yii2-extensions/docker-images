@@ -167,6 +167,8 @@ RUN install-php-extensions \
 #------------------------------------------------------------------------------
 FROM dev AS full
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Layer 07: Full extensions
 RUN install-php-extensions \
     oci8 \
@@ -175,7 +177,8 @@ RUN install-php-extensions \
 
 # Layer 08: Microsoft SQL Server support
 # Note: Using Debian 12 (bookworm) repo since Trixie (13) is not yet officially supported by Microsoft
-RUN /bin/bash -o pipefail -c "set -ex \
+# hadolint ignore=DL3003,SC2153
+RUN set -ex \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -185,9 +188,11 @@ RUN /bin/bash -o pipefail -c "set -ex \
     && echo 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main' > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
-    && apt-get install -y --no-install-recommends unixodbc unixodbc-dev $PHPIZE_DEPS \
-    && printf "\\n" | pecl install sqlsrv-5.12.0 \
-    && if [[ "$(php -r 'echo PHP_VERSION_ID;')" -ge 80500 ]]; then \
+    && read -r -a phpize_deps <<< "${PHPIZE_DEPS}" \
+    && apt-get install -y --no-install-recommends unixodbc unixodbc-dev "${phpize_deps[@]}" \
+    && printf '\\n' | pecl install sqlsrv-5.12.0 \
+    && PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')" \
+    && if [[ "${PHP_VERSION_ID}" -ge 80500 ]]; then \
         cd /tmp \
         && pecl download pdo_sqlsrv-5.12.0 \
         && tar -xf pdo_sqlsrv-5.12.0.tgz \
@@ -201,12 +206,12 @@ RUN /bin/bash -o pipefail -c "set -ex \
         && make install \
         && rm -rf /tmp/pdo_sqlsrv-5.12.0; \
     else \
-        printf "\\n" | pecl install pdo_sqlsrv-5.12.0; \
+        printf '\\n' | pecl install pdo_sqlsrv-5.12.0; \
     fi \
     && docker-php-ext-enable sqlsrv pdo_sqlsrv \
-    && apt-get purge -y --auto-remove gnupg unixodbc-dev $PHPIZE_DEPS \
+    && apt-get purge -y --auto-remove gnupg unixodbc-dev "${phpize_deps[@]}" \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*"
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 #==============================================================================
 # Production Build
