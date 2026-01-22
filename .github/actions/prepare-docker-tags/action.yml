@@ -13,7 +13,7 @@ inputs:
     required: true
   php-version:
     description: PHP version.
-    default: "8.4"
+    default: "8.5"
     required: false
   flavor-prefix:
     description: Flavor prefix.

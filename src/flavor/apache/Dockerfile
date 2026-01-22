@@ -1,10 +1,10 @@
 #==============================================================================
-# Yii2 Docker - Debian Trixie + PHP 8.4 FPM + Apache with HTTP/2
+# Yii2 Docker - Debian Trixie + PHP 8.5 FPM + Apache with HTTP/2
 # Supports: full (testing), dev (development), prod (production)
 #==============================================================================
 
 ARG BUILD_TYPE=dev
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.5
 
 #------------------------------------------------------------------------------
 # Base System

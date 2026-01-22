@@ -15,7 +15,7 @@ Production-ready Docker images for Yii2 applications with Apache, PHP-FPM, and H
 - ✅ **Apache 2.4** with HTTP/2, Brotli compression, and SSL/TLS
 - ✅ **Auto SSL** certificate generation for development
 - ✅ **Health checks** and monitoring endpoints
-- ✅ **PHP 8.4** with FPM and essential extensions (Redis, MongoDB, MySQL, PostgreSQL)
+- ✅ **PHP 8.5** with FPM and essential extensions (Redis, MongoDB, MySQL, PostgreSQL)
 - ✅ **Security hardened** with modern configurations
 - ✅ **Supervisor** for process management
 - ✅ **Three build variants**: `dev`, `prod`, and `full`
@@ -26,13 +26,13 @@ Pull and run the image.
 
 ```bash
 # Development build with Xdebug
-docker run -d -p 8080:80 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.4-debian-dev-v1.0.0
+docker run -d -p 8080:80 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.5-debian-dev-v1.0.0
 
 # Production build with optimizations
-docker run -d -p 80:80 -p 443:443 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.4-debian-prod-v1.0.0
+docker run -d -p 80:80 -p 443:443 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.5-debian-prod-v1.0.0
 
 # Full testing build with all extensions
-docker run -d -p 8080:80 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.4-debian-full-v1.0.0
+docker run -d -p 8080:80 -v $(pwd):/var/www/app ghcr.io/yii2-extensions/apache:8.5-debian-full-v1.0.0
 ```
 
 ### Docker Compose
@@ -46,7 +46,7 @@ version: '3.8'
 
 services:
   web:
-    image: ghcr.io/yii2-extensions/apache:8.4-debian-dev-v1.0.0
+    image: ghcr.io/yii2-extensions/apache:8.5-debian-dev-v1.0.0
     ports:
       - "8080:80"
       - "8443:443"
@@ -64,18 +64,18 @@ services:
 #### Development (`dev`)
 
 ```bash
-docker pull ghcr.io/yii2-extensions/apache:8.4-debian-dev-v1.0.0
+docker pull ghcr.io/yii2-extensions/apache:8.5-debian-dev-v1.0.0
 ```
 
 - Error reporting enabled with detailed logging
 - Node.js integration for asset compilation
 - OPcache with revalidation for development workflow
-- PHP `8.4` with Xdebug, Memcached, MongoDB, SOAP, YAML
+- PHP `8.5` with Xdebug, Memcached, MongoDB, SOAP, YAML
 
 #### Production (`prod`)
 
 ```bash
-docker pull ghcr.io/yii2-extensions/apache:8.4-debian-prod-v1.0.0
+docker pull ghcr.io/yii2-extensions/apache:8.5-debian-prod-v1.0.0
 ```
 
 - Minimal extension set with maximum performance
@@ -86,7 +86,7 @@ docker pull ghcr.io/yii2-extensions/apache:8.4-debian-prod-v1.0.0
 #### Full Testing (`full`)
 
 ```bash
-docker pull ghcr.io/yii2-extensions/apache:8.4-debian-full-v1.0.0
+docker pull ghcr.io/yii2-extensions/apache:8.5-debian-full-v1.0.0
 ```
 
 - All development extensions plus OCI8, SQL Server, Tidy

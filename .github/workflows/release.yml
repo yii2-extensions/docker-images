@@ -20,7 +20,7 @@ concurrency:
 name: release
 
 env:
-  PHP_VERSION: "8.4"
+  PHP_VERSION: "8.5"
   REGISTRY: ghcr.io
 
 jobs:
@@ -161,7 +161,7 @@ jobs:
 
               if [[ "${{ env.BUILD_RESULT }}" == "success" ]]; then
                 echo "## 🏷️ Generated Tags"
-                echo "- \`8.4-debian-{build_type}-v${{ env.VERSION }}\`"
+                echo "- \`8.5-debian-{build_type}-v${{ env.VERSION }}\`"
                 if [[ "${{ env.IS_PRERELEASE }}" == "false" ]]; then
                   echo "- \`latest\` (prod only)"
                 fi
