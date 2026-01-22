@@ -25,7 +25,7 @@ concurrency:
 name: build
 
 env:
-  PHP_VERSION: "8.4"
+  PHP_VERSION: "8.5"
   REGISTRY: ghcr.io
 
 jobs:
@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout.
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Docker Buildx.
         uses: docker/setup-buildx-action@v3
