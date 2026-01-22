@@ -3,6 +3,7 @@
 ## v1.1.0 Under Development
 
 - Enh #32 Update to PHP `8.5` (@terabytesoftw)
+- Bug #33 Build `sqlsrv/pdo_sqlsrv` in full image on PHP `8.5` using `BuildKit-mounted` scripts (@terabytesoftw)
 
 ## v1.0.0 September 13, 2025
 
