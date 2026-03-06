@@ -91,7 +91,7 @@ jobs:
           is-release: "true"
 
       - name: Build and Push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
           BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
           IMAGE_CREATED: ${{ steps.meta.outputs.created }}
