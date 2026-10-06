@@ -18,80 +18,24 @@ on:
       - "docs/**"
       - "README.md"
 
-concurrency:
-  group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 name: build
 
-env:
-  PHP_VERSION: "8.5"
-  REGISTRY: ghcr.io
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  bake:
+    name: Bake
+    # The `$/` self-repository syntax is not supported by actionlint 1.7.12, pinned by the org quality workflow.
+    uses: ./.github/workflows/bake.yml # zizmor: ignore[self-repository]
     permissions:
-      actions: write
       contents: read
-
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [dev, full, prod]
-
-    steps:
-      - name: Checkout.
-        uses: actions/checkout@v6
-
-      - name: Setup Docker Buildx.
-        uses: docker/setup-buildx-action@v3
-
-      - name: Prepare Tags.
-        id: tags
-        uses: ./.github/actions/prepare-docker-tags
-        with:
-          base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
-          build-type: ${{ matrix.build_type }}
-          flavor-prefix: "debian"
-          is-release: "false"
-          php-version: "${{ env.PHP_VERSION }}"
-
-      - name: Build Only.
-        uses: docker/build-push-action@v6
-        env:
-          SCOPE: ${{ github.head_ref || github.ref_name }}
-        with:
-          context: .
-          file: ./src/flavor/apache/Dockerfile
-          push: false
-          tags: ${{ steps.tags.outputs.tags }}
-          build-args: |
-            BUILD_TYPE=${{ matrix.build_type }}
-            PHP_VERSION=${{ env.PHP_VERSION }}
-          cache-from: >-
-            type=gha,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
-          cache-to: >-
-            type=gha,mode=max,scope=${{ env.SCOPE }}-${{ matrix.build_type }}
-          provenance: false
-          sbom: false
-
-      - name: Show result.
-        env:
-          BUILD_TYPE: ${{ matrix.build_type }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          echo "🎉 Build completed for ${BUILD_TYPE}!"
-          echo "Event: ${EVENT_NAME}"
-          echo "Tags: ${{ steps.tags.outputs.tags }}"
-          if [[ "${EVENT_NAME}" == "push" ]]; then
-            echo "✅ Image pushed to registry"
-          else
-            echo "ℹ️ Image built but not pushed (PR mode)"
-          fi
-
-      - name: Clear old GitHub Actions caches.
-        if: >-
-          ${{ github.event_name == 'push' && matrix.build_type == 'full' }}
-        uses: easimon/wipe-cache@main
+      packages: write # Registry build cache export on pushes to main; pull requests never log in.
+    with:
+      ref: ${{ github.sha }}
+      cache-write: ${{ github.event_name == 'push' }}
+      publish: false

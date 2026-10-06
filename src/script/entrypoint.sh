@@ -6,38 +6,23 @@ set -euo pipefail
 #==============================================================================
 
 # Load common functionalities
-for script in /usr/local/bin/common/*.sh; do
-    [[ -f "$script" && "$(basename "$script")" != "30-ssl.sh" ]] && source "$script"
+for script in /usr/local/lib/yii2-docker/common/*.sh; do
+    source "$script"
 done
 
 # Main execution
 main() {
-    if [[ "$(id -u)" == "0" ]]; then
-        print_banner
-        log INFO "Escalating to root for system initialization..."
-    fi
+    print_banner
 
-    # Check if we need to escalate privileges for initialization
-    if [[ "$(id -u)" != "0" ]]; then
-        # We're running as non-root (www-data), but we need root privileges for initialization
-        # Use exec with sudo to restart as root, then switch back to www-data for the final process
-        if command -v sudo >/dev/null 2>&1; then
-            exec sudo -E "$0" "$@"
-        else
-            log WARNING "Running as non-root user without sudo - some initialization steps may fail"
-        fi
-    fi
-
-    # Only run initialization if we're root
     if [[ "$(id -u)" == "0" ]]; then
         log INFO "Running as root - performing system configuration..."
 
         # Setup directories
         setup_directories
 
-        # SSL setup for Apache with HTTP/2 (non-blocking)
+        # Apache defines, SSL certificates and health endpoints
         if [[ "${SERVICE_TYPE:-}" == "apache-fpm" ]] && command -v apache2 >/dev/null 2>&1; then
-            source /usr/local/bin/common/30-ssl.sh || log WARNING "SSL setup failed, continuing without SSL"
+            apache_configure
         fi
 
         # Set final permissions
@@ -47,7 +32,7 @@ main() {
             chown -R www-data:www-data /var/www/app/web/assets 2>/dev/null || true
         fi
     else
-        log INFO "Running as non-root user: $(id -un)"
+        log WARNING "Running as non-root user $(id -un): skipping system configuration (directories, Apache, SSL, permissions)"
     fi
 
     # Wait for databases if configured
@@ -58,9 +43,6 @@ main() {
 
     # Run migrations
     yii_run_migrations
-
-    # Create health endpoint
-    health_create_endpoint
 
     log SUCCESS "Container initialization complete!"
     log INFO "Starting services..."
@@ -76,16 +58,21 @@ main() {
 
 # Wait for databases (simplified)
 wait_for_databases() {
-    [[ "${SKIP_DB_WAIT:-false}" == "true" ]] && return
+    if [[ "${SKIP_DB_WAIT:-false}" == "true" ]]; then
+        return 0
+    fi
 
     # Auto-detect if we should wait based on environment
     local should_wait=false
     [[ "${WAIT_FOR_SERVICES:-false}" == "true" ]] && should_wait=true
     [[ "${YII_ENV:-}" == "test" ]] && should_wait=true
 
-    [[ "$should_wait" == "false" ]] && return
+    if [[ "$should_wait" == "false" ]]; then
+        return 0
+    fi
 
     # Wait for configured databases
+    local db_type
     for db_type in MYSQL PGSQL REDIS MONGODB MSSQL ORACLE; do
         local host_var="DB_${db_type}_HOST"
         local port_var="DB_${db_type}_PORT"
@@ -101,7 +88,9 @@ wait_for_databases() {
             ORACLE) default_port=1521 ;;
             esac
 
-            wait_for_service "${!host_var}" "${!port_var:-$default_port}" "$db_type"
+            if ! wait_for_service "${!host_var}" "${!port_var:-$default_port}" "$db_type"; then
+                fail_or_continue FAIL_ON_SERVICE_TIMEOUT false "${db_type} is not reachable"
+            fi
         fi
     done
 }

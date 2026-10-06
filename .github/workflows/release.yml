@@ -4,178 +4,67 @@ on:
     tags:
       - "v*.*.*"
 
+  # Weekly rebuild of the latest release on fresh upstream images; only the rolling tags and `latest` move.
+  schedule:
+    - cron: "23 4 * * 1"
+
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to build (for example, 1.0.0)"
-        required: true
+        description: Release to rebuild (X.Y.Z, without `v`). Empty rebuilds the latest release, rolling tags only.
+        default: ""
+        required: false
         type: string
-
-concurrency:
-  group: >-
-    release-${{ github.ref_type == 'tag' && github.ref_name ||
-    github.event.inputs.version }}
-  cancel-in-progress: true
 
 name: release
 
-env:
-  PHP_VERSION: "8.5"
-  REGISTRY: ghcr.io
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  validate-version:
-    runs-on: ubuntu-latest
+  resolve:
+    name: Resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
 
     outputs:
-      is_prerelease: ${{ steps.validate.outputs.is_prerelease }}
-      should_build: ${{ steps.validate.outputs.should_build }}
-      source: ${{ steps.validate.outputs.source }}
-      version: ${{ steps.validate.outputs.version }}
+      build: ${{ steps.resolve.outputs.build }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      rolling: ${{ steps.resolve.outputs.rolling }}
+      version: ${{ steps.resolve.outputs.version }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Validate Version
-        id: validate
-        uses: ./.github/actions/validate-version
+      - name: Checkout.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          input-version: ${{ github.event.inputs.version }}
-          allow-prerelease: "false"
+          fetch-depth: 0
+          persist-credentials: false
 
-  build:
-    needs: validate-version
-    if: needs.validate-version.outputs.should_build == 'true'
+      - name: Resolve the release to build.
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: bash .github/scripts/release-resolve.sh
 
-    runs-on: ubuntu-latest
-
+  publish:
+    name: Publish
+    needs: resolve
+    if: ${{ needs.resolve.outputs.build == 'true' }}
+    # The `$/` self-repository syntax is not supported by actionlint 1.7.12, pinned by the org quality workflow.
+    uses: ./.github/workflows/bake.yml # zizmor: ignore[self-repository]
     permissions:
       contents: read
-      id-token: write
-      packages: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [dev, full, prod]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute build metadata
-        id: meta
-        run: |
-          echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare Tags
-        id: tags
-        uses: ./.github/actions/prepare-docker-tags
-        with:
-          base-name: "${{ env.REGISTRY }}/${{ github.repository_owner }}/apache"
-          build-type: ${{ matrix.build_type }}
-          flavor-prefix: "debian"
-          php-version: "${{ env.PHP_VERSION }}"
-          version: ${{ needs.validate-version.outputs.version }}
-          is-release: "true"
-
-      - name: Build and Push
-        uses: docker/build-push-action@v6
-        env:
-          BUILD_VERSION: ${{ needs.validate-version.outputs.version }}
-          IMAGE_CREATED: ${{ steps.meta.outputs.created }}
-        with:
-          build-args: |
-            BUILD_TYPE=${{ matrix.build_type }}
-            PHP_VERSION=${{ env.PHP_VERSION }}
-            VERSION=${{ env.BUILD_VERSION }}
-          cache-from: type=gha,scope=${{ matrix.build_type }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.build_type }}
-          context: .
-          file: ./src/flavor/apache/Dockerfile
-          labels: |
-            org.opencontainers.image.created=${{ env.IMAGE_CREATED }}
-            org.opencontainers.image.ref.name=${{ github.ref_name }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.url=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ env.BUILD_VERSION }}
-          provenance: false
-          push: true
-          sbom: false
-          tags: ${{ steps.tags.outputs.tags }}
-
-      - name: Show build result
-        env:
-          BUILD_TYPE: ${{ matrix.build_type }}
-          VERSION: ${{ needs.validate-version.outputs.version }}
-        run: |
-          echo "🎉 Build completed for ${BUILD_TYPE} v${VERSION}!"
-          echo "Tags: ${{ steps.tags.outputs.tags }}"
-
-  summary:
-    name: Release Summary
-    needs: [validate-version, build]
-    if: always()
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Generate summary
-        env:
-          VERSION: ${{ needs.validate-version.outputs.version }}
-          SOURCE: ${{ needs.validate-version.outputs.source }}
-          IS_PRERELEASE: ${{ needs.validate-version.outputs.is_prerelease }}
-          BUILD_RESULT: ${{ needs.build.result }}
-          SHOULD_BUILD: ${{ needs.validate-version.outputs.should_build }}
-        run: |
-          {
-            echo "# 📦 Release Summary"
-            echo ""
-            echo "**Version:** \`${{ env.VERSION }}\`"
-            echo "**Source:** ${{ env.SOURCE }}"
-            echo "**Type:** ${{ env.IS_PRERELEASE == 'true' && 'Pre-release' || 'Stable' }}"
-            echo "**PHP Version:** ${{ env.PHP_VERSION }}"
-            echo "**Registry:** ${{ env.REGISTRY }}"
-            echo ""
-
-            if [[ "${{ env.SHOULD_BUILD }}" == "true" ]]; then
-              echo "## 🗂️ Build Status"
-              echo "| Build Type | Status |"
-              echo "|------------|--------|"
-              echo "| dev | ${{ env.BUILD_RESULT }} |"
-              echo "| full | ${{ env.BUILD_RESULT }} |"
-              echo "| prod | ${{ env.BUILD_RESULT }} |"
-              echo ""
-
-              if [[ "${{ env.BUILD_RESULT }}" == "success" ]]; then
-                echo "## 🏷️ Generated Tags"
-                echo "- \`${{ env.PHP_VERSION }}-debian-{build_type}-v${{ env.VERSION }}\`"
-                if [[ "${{ env.IS_PRERELEASE }}" == "false" ]]; then
-                  echo "- \`latest\` (prod only)"
-                fi
-                echo ""
-              fi
-
-              echo "## 🧹 Next Steps"
-              echo "Cleanup can be triggered manually via the \`cleanup-versions\` workflow"
-            else
-              echo "## ⚠️ Build Skipped"
-              echo "Version validation failed - no images were built."
-            fi
-
-            echo ""
-            echo "---"
-            echo "*Released at $(date -u +%Y-%m-%dT%H:%M:%SZ)*"
-          } >> "$GITHUB_STEP_SUMMARY"
+      packages: write # Push images to GitHub Container Registry.
+    with:
+      ref: ${{ needs.resolve.outputs.ref }}
+      version: ${{ needs.resolve.outputs.version }}
+      publish: true
+      rolling: ${{ needs.resolve.outputs.rolling == 'true' }}
+      cache-write: false

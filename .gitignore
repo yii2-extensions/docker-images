@@ -1,28 +1,18 @@
-#code coverage
-/code_coverage
+# AI agent local state
+.claude/
+.codex/
 
-# composer vendor dir
-/vendor
-/composer.lock
+# Local environment file copied from .env.example
+.env
 
-# dev files
-build.sh
-docker-compose.yml
+# Local bake overrides, read automatically by docker buildx bake when present
+docker-bake.override.hcl
+docker-bake.override.json
 
-#node_modules
-/node_modules
+# Editor and IDE project files
+.idea/
+.vscode/
 
-# phpstorm project files
-.idea
-
-# phpunit
-.phpunit.cache
-.phpunit.result.cache
-phpunit.phar
-phpunit.xml
-
-#yii3 config packages
-/config/packages
-
-# windows thumbnail cache
+# Operating system files
+.DS_Store
 Thumbs.db

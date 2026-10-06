@@ -1,0 +1,5 @@
+# Typical Yii2 front-controller rules; the internal health endpoint must not be affected by them.
+RewriteEngine on
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php

@@ -1,0 +1,215 @@
+---
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref or commit SHA to build.
+        required: true
+        type: string
+      version:
+        description: Release version without the `v` prefix (X.Y.Z); empty leaves the frozen tags untouched.
+        default: ""
+        required: false
+        type: string
+      publish:
+        description: Push multi-platform images for the stable PHP versions.
+        default: false
+        required: false
+        type: boolean
+      rolling:
+        description: Move the rolling tags and `latest` too when publishing.
+        default: true
+        required: false
+        type: boolean
+      cache-write:
+        description: Export the registry build cache.
+        default: false
+        required: false
+        type: boolean
+
+name: bake
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    name: Matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    outputs:
+      created: ${{ steps.meta.outputs.created }}
+      image: ${{ steps.meta.outputs.image }}
+      php: ${{ steps.matrix.outputs.php }}
+      revision: ${{ steps.meta.outputs.revision }}
+
+    steps:
+      # The source to build comes from `inputs.ref`; the CI scripts come from the commit that holds this workflow.
+      - name: Checkout source.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: source
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+
+      - name: Checkout CI scripts.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          sparse-checkout: .github/scripts
+
+      - name: Compute image metadata.
+        id: meta
+        working-directory: source
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          {
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "image=ghcr.io/${OWNER,,}/apache"
+            echo "revision=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Derive the PHP matrix from docker-bake.hcl.
+        id: matrix
+        working-directory: source
+        run: bash ../ci/.github/scripts/bake-matrix.sh image
+
+  build:
+    name: PHP ${{ matrix.php.version }} ${{ matrix.arch }}
+    needs: matrix
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    continue-on-error: ${{ matrix.php.experimental }}
+
+    permissions:
+      contents: read
+      packages: write # Registry build cache export and push by digest; the token is used only when one is enabled.
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ${{ fromJSON(needs.matrix.outputs.php) }}
+        # Keep in sync with BAKE_PLATFORMS of the merge job.
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+
+    env:
+      BAKE_PHP: ${{ matrix.php.version }}
+      BAKE_PLATFORM: linux/${{ matrix.arch }}
+      CREATED: ${{ needs.matrix.outputs.created }}
+      IMAGE: ${{ needs.matrix.outputs.image }}
+      REVISION: ${{ needs.matrix.outputs.revision }}
+      VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: Checkout source.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: source
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+
+      - name: Checkout CI scripts.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          sparse-checkout: .github/scripts
+
+      - name: Set up Docker Buildx.
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry.
+        if: ${{ inputs.publish || inputs.cache-write }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build all variants and run the smoke tests.
+        working-directory: source
+        env:
+          BAKE_CACHE_WRITE: ${{ inputs.cache-write }}
+        run: bash ../ci/.github/scripts/bake-build.sh smoke
+
+      - name: Push the images by digest.
+        if: ${{ inputs.publish && !matrix.php.experimental }}
+        working-directory: source
+        env:
+          BAKE_METADATA_FILE: ${{ runner.temp }}/digests/${{ matrix.php.version }}-${{ matrix.arch }}.json
+        run: bash ../ci/.github/scripts/bake-build.sh digest
+
+      - name: Upload the digests.
+        if: ${{ inputs.publish && !matrix.php.experimental }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: digests-${{ matrix.php.version }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/${{ matrix.php.version }}-${{ matrix.arch }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Publish
+    needs: [matrix, build]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      packages: write # Push the multi-platform manifest lists.
+
+    env:
+      BAKE_PLATFORMS: linux/amd64 linux/arm64
+      BAKE_ROLLING: ${{ inputs.rolling }}
+      IMAGE: ${{ needs.matrix.outputs.image }}
+      VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: Checkout source.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: source
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+
+      - name: Checkout CI scripts.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: ci
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          sparse-checkout: .github/scripts
+
+      - name: Set up Docker Buildx.
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry.
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Download the digests.
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+
+      - name: Publish the multi-platform manifest lists.
+        working-directory: source
+        env:
+          BAKE_DIGESTS_DIR: ${{ runner.temp }}/digests
+        run: bash ../ci/.github/scripts/bake-merge.sh

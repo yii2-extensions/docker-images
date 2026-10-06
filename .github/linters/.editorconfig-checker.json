@@ -1,0 +1,8 @@
+{
+    "Exclude": [
+        "^\\.claude/",
+        "^\\.codex/",
+        "^\\.vscode/",
+        "^runtime/"
+    ]
+}

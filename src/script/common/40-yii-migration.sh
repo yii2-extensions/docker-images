@@ -4,35 +4,33 @@
 #==============================================================================
 
 yii_run_migrations() {
-    [[ "${YII_RUN_MIGRATIONS:-false}" != "true" ]] && return
-    [[ ! -f "/var/www/app/yii" ]] && {
+    if [[ "${YII_RUN_MIGRATIONS:-false}" != "true" ]]; then
+        return 0
+    fi
+
+    if [[ ! -f "/var/www/app/yii" ]]; then
         log WARNING "Yii console not found"
-        return
-    }
-    [[ "${YII_ENV:-}" == "test" ]] && {
+        return 0
+    fi
+
+    if [[ "${YII_ENV:-}" == "test" ]]; then
         log INFO "Test environment, skipping migrations"
-        return
-    }
+        return 0
+    fi
 
     log INFO "Running database migrations..."
-    cd /var/www/app || {
-        log ERROR "Failed to cd to /var/www/app"
-        [[ "${FAIL_ON_MIGRATION_ERROR:-true}" == "true" ]] && exit 1 || return 1
-    }
 
     # Execute as www-data if we're root, otherwise run directly
     local result=0
-    if [[ "$(id -u)" == "0" ]]; then
-        su www-data -s /bin/bash -c "php yii migrate --interactive=0" && result=0 || result=1
-    else
-        php yii migrate --interactive=0 && result=0 || result=1
+    (
+        cd /var/www/app || exit 1
+        run_as_app_user php yii migrate --interactive=0
+    ) || result=$?
+
+    if [[ $result -ne 0 ]]; then
+        fail_or_continue FAIL_ON_MIGRATION_ERROR true "Migration failed with exit code ${result}"
+        return 0
     fi
 
-    if [[ $result -eq 0 ]]; then
-        log SUCCESS "Migrations completed"
-    else
-        log ERROR "Migration failed"
-        [[ "${FAIL_ON_MIGRATION_ERROR:-true}" == "true" ]] && exit 1
-        return 1
-    fi
+    log SUCCESS "Migrations completed"
 }
