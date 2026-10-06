@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.0.0 Under development
+## v2.0.0 October 6, 2026
 
 - feat!: rebuild the images with `docker buildx bake`, ship them slimmer, and add `install-extensions`, smoke tests and a new Apache setup.
 
