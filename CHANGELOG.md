@@ -1,10 +1,19 @@
-# ChangeLog
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## v2.0.0 Under development
+
+- feat!: rebuild the images with `docker buildx bake`, ship them slimmer, and add `install-extensions`, smoke tests and a new Apache setup.
 
 ## v1.1.0 January 22, 2026
 
-- Enh #32 Update to PHP `8.5` (@terabytesoftw)
-- Bug #33 Build `sqlsrv/pdo_sqlsrv` in full image on PHP `8.5` using `BuildKit-mounted` scripts (@terabytesoftw)
+- feat: update to PHP `8.5`.
+- fix: build `sqlsrv/pdo_sqlsrv` in the full image on PHP `8.5` using `BuildKit-mounted` scripts.
 
 ## v1.0.0 September 13, 2025
 
-- Enh #1: Add Apache, PHP `8.4`, PHP-FPM, and HTTP/2 support, image for Debian Trixie (@terabytesoftw)
+- feat: add Apache, PHP `8.4`, PHP-FPM, and HTTP/2 support, image for Debian Trixie.

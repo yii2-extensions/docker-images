@@ -6,10 +6,22 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
 
-  # Maintain dependencies for Composer
-  - package-ecosystem: "composer"
-    directory: "/"
+  # Maintain pinned base images of the Apache flavor (the ARG-templated PHP base image is not trackable)
+  - package-ecosystem: "docker"
+    directory: "/src/flavor/apache"
     schedule:
       interval: "daily"
-    versioning-strategy: increase-if-necessary
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]

@@ -3,6 +3,7 @@
 # Wait for Service
 #==============================================================================
 
+# Returns 1 on timeout; the caller applies FAIL_ON_SERVICE_TIMEOUT.
 wait_for_service() {
     local host=$1
     local port=$2
@@ -16,7 +17,6 @@ wait_for_service() {
     while ! (exec 3<>/dev/tcp/"${host}"/"${port}") 2>/dev/null; do
         if [[ $elapsed -ge $timeout ]]; then
             log ERROR "${service} failed to respond within ${timeout} seconds"
-            [[ "${FAIL_ON_SERVICE_TIMEOUT:-false}" == "true" ]] && exit 1
             return 1
         fi
 

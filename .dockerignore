@@ -1,0 +1,6 @@
+# Build context allowlist: only the files the Dockerfile copies or mounts.
+*
+!src/etc/
+!src/script/
+!src/supervisor/
+!tests/

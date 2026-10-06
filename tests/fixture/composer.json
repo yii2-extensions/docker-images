@@ -1,0 +1,7 @@
+{
+    "name": "yii2-extensions/docker-images-fixture",
+    "description": "Dependency-free fixture used by tests/smoke.sh",
+    "type": "project",
+    "license": "BSD-3-Clause",
+    "require": {}
+}

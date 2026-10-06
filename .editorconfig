@@ -10,14 +10,14 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
-[*.php]
-ij_php_space_before_short_closure_left_parenthesis = false
-ij_php_space_after_type_cast = true
+[*.hcl]
+indent_size = 2
 
 [*.md]
+indent_size = 2
 trim_trailing_whitespace = false
 
-[*.yml]
+[*.{yml,yaml}]
 indent_size = 2
 
 [LICENSE*]

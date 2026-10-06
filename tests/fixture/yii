@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$uid = function_exists('posix_geteuid') ? posix_geteuid() : -1;
+
+fwrite(STDOUT, 'SMOKE-YII uid=' . $uid . ' args=' . implode(' ', array_slice($argv, 1)) . PHP_EOL);
+
+exit(getenv('SMOKE_MIGRATION_FAIL') === '1' ? 1 : 0);
