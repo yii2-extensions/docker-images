@@ -48,16 +48,18 @@ Use a rolling tag to receive security updates automatically, or a frozen tag for
 
 ## Quick start
 
-Run the `dev` variant against an application in the current directory:
+Run the `dev` variant against an application in the current directory. On Linux, pass your own user so the files the
+container creates (`vendor/`, `runtime/`, `web/assets/`) belong to you:
 
 ```bash
-docker run -d --name app -p 8080:80 -p 8443:443 -v "$PWD":/var/www/app ghcr.io/yii2-extensions/apache:8.5-debian-dev
+docker run -d --name app --user "$(id -u):$(id -g)" -p 8080:80 -p 8443:443 -v "$PWD":/var/www/app \
+    ghcr.io/yii2-extensions/apache:8.5-debian-dev
 ```
 
 The application answers on `http://localhost:8080` and, with a generated self-signed certificate, on
-`https://localhost:8443`. Composer installs the dependencies at startup when `vendor/` is missing; before that, the
-entrypoint assigns `/var/www/app` to `www-data`, which also changes the owner of a bind-mounted host directory. Set
-`FIX_PERMS=false` to keep the host ownership.
+`https://localhost:8443`. Composer installs the dependencies at startup when `vendor/` is missing, as the container
+user, so the project directory must be writable by it. Without `--user` the stack runs as `www-data` (UID 33), which
+suits Docker Desktop and named volumes.
 
 With Docker Compose:
 
@@ -65,6 +67,7 @@ With Docker Compose:
 services:
   app:
     image: ghcr.io/yii2-extensions/apache:8.5-debian-dev
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "8080:80"
       - "8443:443"
@@ -80,7 +83,7 @@ For production, build an application image on top of `prod` so the code and its 
 ```dockerfile
 FROM ghcr.io/yii2-extensions/apache:8.5-debian-prod-v2.0.0
 
-COPY . /var/www/app
+COPY --chown=www-data:www-data . /var/www/app
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 ```
 
@@ -114,11 +117,13 @@ variable, its default and the startup sequence.
 | Variable                 | Default                              | Description                                                    |
 | ------------------------ | ------------------------------------ | -------------------------------------------------------------- |
 | `APACHE_DOCUMENT_ROOT`   | `/var/www/app/web`                   | Document root.                                                 |
-| `APACHE_SSL_ENABLED`     | `true`                               | HTTPS with HTTP/2 on port 443.                                 |
+| `APACHE_HTTP_PORT`       | `80`                                 | HTTP port inside the container.                                |
+| `APACHE_HTTPS_PORT`      | `443`                                | HTTPS port inside the container.                               |
+| `APACHE_SSL_ENABLED`     | `true`                               | HTTPS with HTTP/2 on `APACHE_HTTPS_PORT`.                      |
 | `APACHE_SSL_REDIRECT`    | `false`                              | Redirect HTTP to HTTPS.                                        |
 | `SSL_AUTO_GENERATE`      | `true`                               | Generate a self-signed certificate when none is mounted.       |
-| `SSL_CERT_FILE`          | `/etc/apache2/ssl/cert.pem`          | Certificate file.                                              |
-| `SSL_KEY_FILE`           | `/etc/apache2/ssl/key.pem`           | Private key file.                                              |
+| `SSL_CERT_FILE`          | `/etc/apache2/ssl/cert.pem`          | Mounted certificate, readable by the container user.           |
+| `SSL_KEY_FILE`           | `/etc/apache2/ssl/key.pem`           | Mounted private key, readable by the container user.           |
 | `SKIP_COMPOSER_INSTALL`  | `true` for `prod`, `false` otherwise | Skip `composer install` at startup.                            |
 | `YII_RUN_MIGRATIONS`     | `false`                              | Run `yii migrate` at startup.                                  |
 | `WAIT_FOR_SERVICES`      | `false`                              | Wait for the `DB_*_HOST` services before starting.             |
@@ -138,8 +143,28 @@ docker run -d -p 80:80 -p 443:443 \
     my-app
 ```
 
-The container runs as root by default, which the default command (`supervisord` managing Apache and PHP-FPM) needs.
-Apache and PHP-FPM workers run as `www-data`; Composer and migrations run as `www-data` too.
+## Users and privileges
+
+The whole stack (the entrypoint, `supervisord`, Apache and PHP-FPM) runs as the container user, and no process is
+root:
+
+- **`www-data`** (default, the image declares `USER www-data`).
+- **Any UID**, with `--user <uid>:<gid>` or Compose `user:`. The UID needs no account in the image, so files created
+  in a bind-mounted project belong to the host user. The entrypoint cannot change ownership in this mode; when the
+  application directory is not writable it says so and names the remedy.
+- **Root**, as an explicit opt-in with `--user root`: the entrypoint initializes as root (directories, `FIX_PERMS`),
+  then Apache and PHP-FPM drop their workers to `www-data`, as in v1. Nothing root sources, executes or loads may be
+  written by `www-data`, and the generated private key is readable by root only.
+
+Runtime state (pid files, sockets, the Apache runtime environment, generated certificates, PHP sessions and temporary
+files) lives under `/run/yii2` and is created at every start for the running user. In the two non-root modes no
+process can gain root, so the class of privilege escalation that the root mode must guard against does not exist.
+
+Ports 80 and 443 work as a non-root user under `docker run`, because Docker allows unprivileged processes to bind
+every port. Kubernetes, `--network host` and other runtimes that keep ports below 1024 privileged need
+`APACHE_HTTP_PORT` and `APACHE_HTTPS_PORT` (for example `8080` and `8443`); the entrypoint stops with that remedy when
+the configured port cannot be bound. See the [configuration reference](docs/configuration.md#users-and-privileges)
+for the read-only root filesystem flags.
 
 ## Health checks
 
@@ -156,8 +181,13 @@ command compiles extensions in a derived image in one step:
 ```dockerfile
 FROM ghcr.io/yii2-extensions/apache:8.5-debian-prod
 
+USER root
 RUN install-extensions amqp sockets
+USER www-data
 ```
+
+The image runs as `www-data`, so every step that installs packages or extensions needs `USER root` first, and the
+image should switch back to `USER www-data` afterwards; `install-extensions` stops with that hint when it is not root.
 
 It accepts the extension names and version syntax of
 [`install-php-extensions`](https://github.com/mlocati/docker-php-extension-installer) (PECL and bundled extensions).
@@ -170,7 +200,9 @@ Ghostscript is not included, so Imagick reads and writes raster formats (JPEG, P
 PDF, PS or EPS. Add it in a derived image when you need them:
 
 ```dockerfile
+USER root
 RUN apt-get update && apt-get install -y --no-install-recommends ghostscript && rm -rf /var/lib/apt/lists/*
+USER www-data
 ```
 
 ## Upgrading from v1
@@ -179,9 +211,18 @@ Version 2 contains breaking changes. Review each item before switching tags.
 
 - **No toolchain in the image.** Images ship without compilers and PHP sources. Derived images that compile
   extensions use the included `install-extensions` command (see [Extending the image](#extending-the-image)).
-- **No `sudo`, `gosu`, `vim-tiny` or `brotli` CLI.** `www-data` no longer has passwordless `sudo`. The entrypoint no
-  longer re-executes itself as root: started as a non-root user, it skips the system setup (directories, Apache, SSL,
-  permissions) with a warning and runs the given command. Keep the default root user for the default command.
+- **Runs as `www-data`.** The image declares `USER www-data` and the whole stack runs as the container user; `docker
+exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts on Linux (v1 changed the owner of the
+  project to `www-data` instead), or `--user root` for the v1 behavior (root initialization, `FIX_PERMS`, workers as
+  `www-data`). Derived images need `USER root` before installing packages or extensions and `USER www-data` after;
+  application files copied into a derived image need `COPY --chown=www-data:www-data`.
+- **Runtime state moved to `/run/yii2`.** Pid files, the PHP-FPM socket (`/run/yii2/php/php-fpm.sock`), the
+  supervisor socket, PHP sessions (`PHP_SESSION_PATH=/run/yii2/sessions`), PHP temporary files and the generated
+  self-signed certificate (`/run/yii2/ssl`) are created at every start. Generated certificates are no longer written
+  to `SSL_DIR` and do not survive a restart; mounted certificates must be readable by the container user, otherwise the
+  container serves HTTP only and logs why. `/etc/apache2` and `/etc/apache2/ssl` belong to root.
+- **No `sudo`, `gosu`, `vim-tiny` or `brotli` CLI.** `www-data` no longer has passwordless `sudo`, and the entrypoint
+  no longer re-executes itself as root.
 - **Node.js is no longer downloaded at startup.** `dev` and `full` include Node.js 24 and npm; `prod` does not. Build
   front-end assets in your application image or in a separate build stage.
 - **`prod` skips `composer install` by default.** Install dependencies in the application image, or set

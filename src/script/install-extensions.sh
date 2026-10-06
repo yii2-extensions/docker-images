@@ -168,7 +168,7 @@ installed_packages() {
 install_extensions() {
     local auto_list deps before
 
-    [[ "$(id -u)" == "0" ]] || die "Must run as root."
+    [[ "$(id -u)" == "0" ]] || die "Must run as root: add USER root before it in your Dockerfile, then USER www-data afterwards (the image runs as www-data)."
     command -v install-php-extensions >/dev/null || die "install-php-extensions not found."
 
     : "${PHPIZE_DEPS:?PHPIZE_DEPS is not set}"

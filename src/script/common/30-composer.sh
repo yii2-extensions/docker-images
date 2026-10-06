@@ -33,10 +33,27 @@ composer_install() {
 
     log INFO "Installing Composer dependencies..."
 
-    # Give www-data write access (opt-out; enabled by default)
-    if [[ "${FIX_PERMS:-true}" == "true" ]] && [[ "$(id -u)" == "0" ]]; then
-        chown -R www-data:www-data /var/www/app
-        chmod -R g+rwX /var/www/app
+    # Root: give www-data write access (opt-out; enabled by default). -P never follows links inside the application.
+    # Other users cannot change ownership; they need write access to the application directory already.
+    local home=/var/www
+    if is_root; then
+        if [[ "${FIX_PERMS:-true}" == "true" ]] && path_is_canonical /var/www/app; then
+            chown -R -P www-data:www-data /var/www/app
+            chmod -R g+rwX /var/www/app
+        fi
+    else
+        if [[ ! -w /var/www/app ]] || [[ -d /var/www/app/vendor && ! -w /var/www/app/vendor ]]; then
+            log ERROR "Composer cannot write to /var/www/app as $(current_user_label)"
+            app_directory_remedy
+            fail_or_continue FAIL_ON_COMPOSER_ERROR false "Composer install skipped"
+            return 0
+        fi
+        # An arbitrary UID cannot write the image's Composer home; use a private one in the temporary directory
+        if [[ ! -w /var/www/.composer || ! -w /var/www/.npm ]]; then
+            home="${TMPDIR:-/tmp}/yii2-home-$(id -u)"
+            mkdir -p "${home}/.composer/cache" "${home}/.npm"
+            log DEBUG "Using Composer home ${home}/.composer"
+        fi
     fi
 
     local -a flags=(--ansi --no-interaction --no-progress --optimize-autoloader --prefer-dist)
@@ -52,10 +69,10 @@ composer_install() {
     (
         cd /var/www/app || exit 1
         run_as_app_user env \
-            HOME=/var/www \
-            COMPOSER_HOME=/var/www/.composer \
-            COMPOSER_CACHE_DIR=/var/www/.composer/cache \
-            npm_config_cache=/var/www/.npm \
+            HOME="$home" \
+            COMPOSER_HOME="${home}/.composer" \
+            COMPOSER_CACHE_DIR="${home}/.composer/cache" \
+            npm_config_cache="${home}/.npm" \
             composer install "${flags[@]}"
     ) || result=$?
 
@@ -67,7 +84,7 @@ composer_install() {
     log SUCCESS "Composer dependencies installed successfully"
 
     # Make yii executable if it exists
-    if [[ -f "/var/www/app/yii" ]]; then
+    if [[ -f "/var/www/app/yii" && ! -L "/var/www/app/yii" ]]; then
         chmod +x /var/www/app/yii 2>/dev/null || true
         log DEBUG "Made yii executable"
     fi

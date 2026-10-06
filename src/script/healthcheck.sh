@@ -10,7 +10,7 @@ set -euo pipefail
 # PHP-FPM cannot answer.
 #==============================================================================
 
-response="$(curl --fail --silent --show-error --max-time 3 --user-agent healthcheck http://127.0.0.1/__health)"
+response="$(curl --fail --silent --show-error --max-time 3 --user-agent healthcheck "http://127.0.0.1:${APACHE_HTTP_PORT:-80}/__health")"
 
 if [[ "$response" != *'"status": "healthy"'* ]]; then
     echo "healthcheck: unexpected response: ${response:0:200}" >&2

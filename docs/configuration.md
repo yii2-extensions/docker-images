@@ -8,17 +8,53 @@ or, when the image does not set the variable, the value the entrypoint falls bac
 The entrypoint runs these steps in order and then starts the command.
 
 1. Prints a banner with the variant, PHP version, user, `YII_ENV` and `YII_DEBUG`.
-2. Prepares the system (root only): creates the application directories, configures Apache and fixes permissions.
+2. Creates the runtime state in `/run/yii2` and the application directories, configures Apache, fixes permissions (root).
 3. Waits for the configured services, when enabled.
 4. Runs `composer install`, unless skipped.
 5. Runs the Yii migrations, when enabled.
 6. Starts `supervisord` (Apache and PHP-FPM) or, when a command is given, runs that command instead.
 
-Step 2 creates `runtime`, `web/assets` and `web/uploads` under `/var/www/app` plus the `www-data` home directories,
-writes the Apache defines for HTTPS, the health endpoint and the PHP-FPM status, and assigns `runtime` and
-`web/assets` to `www-data`. When the container runs as any other user, step 2 is skipped with a warning. The default
-command needs root. Apache configuration lives under `/etc/apache2` and is static: the entrypoint only
+Step 2 creates `runtime`, `web/assets` and `web/uploads` under `/var/www/app` and writes the Apache ports and defines
+for HTTPS, the health endpoint and the PHP-FPM status. As root it also creates the `www-data` home directories and
+assigns `runtime` and `web/assets` to `www-data`, skipping any path that is or passes through a symbolic link; as any
+other user it creates what it can and logs the remedy for what it cannot write. Apache configuration lives under `/etc/apache2` and is static: the entrypoint only
 selects which sections apply through Apache defines, it never rewrites configuration files.
+
+## Users and privileges
+
+The stack runs as the container user: `www-data` by default, any UID:GID with `--user` (no passwd entry needed), or
+root with `--user root`, where Apache and PHP-FPM drop their workers to `www-data`. `supervisord` cannot assign
+programs to another user unless it is root, so custom programs in `/etc/supervisor/conf.d` only keep `user=` lines in
+root mode.
+
+| Path                   | Content                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `/run/yii2/apache`     | `runtime.env` (defines, ports, certificate paths), pid file, locks, SSL caches |
+| `/run/yii2/php`        | PHP-FPM socket                                                                 |
+| `/run/yii2/supervisor` | `supervisord` pid file and control socket                                      |
+| `/run/yii2/ssl`        | Generated self-signed certificate and key                                      |
+| `/run/yii2/sessions`   | PHP sessions (`PHP_SESSION_PATH`)                                              |
+| `/run/yii2/tmp`        | PHP upload and temporary files                                                 |
+
+The entrypoint creates these directories at every start for the running user; in root mode they belong to root,
+except `sessions` and `tmp`, which belong to `www-data`. `/etc/apache2/envvars` sources `runtime.env` only when the
+calling user owns it, so run `docker exec` as the container user (the default) to get the same Apache configuration.
+In root mode nothing that root sources, executes or loads as configuration is writable by `www-data`; in the
+non-root modes no process can become root.
+
+A read-only root filesystem works with tmpfs mounts for the runtime state and the temporary directory, plus writable
+application directories when the application is part of the image:
+
+```bash
+docker run -d --read-only --tmpfs /run/yii2:mode=1777 --tmpfs /tmp:mode=1777 \
+    --tmpfs /var/www/app/runtime:uid=33,gid=33 --tmpfs /var/www/app/web/assets:uid=33,gid=33 \
+    -p 8080:80 -p 8443:443 my-app
+```
+
+Ports 80 and 443 can be bound by a non-root user under `docker run` (Docker sets
+`net.ipv4.ip_unprivileged_port_start=0`). Kubernetes and `--network host` usually keep the 1024 limit: set
+`APACHE_HTTP_PORT=8080` and `APACHE_HTTPS_PORT=8443` and map or expose those ports. The entrypoint stops with this
+remedy when a configured port is privileged for the running user.
 
 ## Entrypoint
 
@@ -76,26 +112,29 @@ when `YII_ENV=prod` or `BUILD_TYPE=prod`.
 
 ## Apache and HTTPS
 
-| Variable                       | Default               | Description                                                                                       |
-| ------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------- |
-| `APACHE_SSL_ENABLED`           | `true`                | `true` serves HTTPS with HTTP/2 on port 443. `false` serves HTTP only and does not open 443.      |
-| `APACHE_SSL_REDIRECT`          | `false`               | `true` redirects HTTP to HTTPS with status 301 (see below).                                       |
-| `SSL_AUTO_GENERATE`            | `true`                | `true` generates a self-signed certificate (RSA 2048, valid 365 days) when the files are missing. |
-| `SSL_DIR`                      | `/etc/apache2/ssl`    | Certificate directory.                                                                            |
-| `SSL_CERT_FILE`                | `${SSL_DIR}/cert.pem` | Certificate file.                                                                                 |
-| `SSL_KEY_FILE`                 | `${SSL_DIR}/key.pem`  | Private key file.                                                                                 |
-| `SSL_CHAIN_FILE`               | empty                 | Optional chain file. A path that does not exist is ignored with a warning.                        |
-| `APACHE_DISABLE_OCSP_STAPLING` | `false`               | `true` disables OCSP stapling.                                                                    |
-| `APACHE_DOCUMENT_ROOT`         | `/var/www/app/web`    | Document root.                                                                                    |
-| `APACHE_ACCESS_LOG`            | `/proc/self/fd/1`     | Access log destination (JSON lines).                                                              |
-| `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                            |
-| `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                    |
+| Variable                       | Default               | Description                                                                                             |
+| ------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
+| `APACHE_HTTP_PORT`             | `80`                  | HTTP port; the healthcheck uses it.                                                                     |
+| `APACHE_HTTPS_PORT`            | `443`                 | HTTPS listener and virtual host port.                                                                   |
+| `APACHE_SSL_ENABLED`           | `true`                | `true` serves HTTPS with HTTP/2 on `APACHE_HTTPS_PORT`. `false` serves HTTP only and does not open 443. |
+| `APACHE_SSL_REDIRECT`          | `false`               | `true` redirects HTTP to HTTPS with status 301 (see below).                                             |
+| `SSL_AUTO_GENERATE`            | `true`                | `true` generates a self-signed certificate (RSA 2048, valid 365 days) when the files are missing.       |
+| `SSL_DIR`                      | `/etc/apache2/ssl`    | Searched for mounted certificates and `openssl.conf`.                                                   |
+| `SSL_CERT_FILE`                | `${SSL_DIR}/cert.pem` | Certificate file.                                                                                       |
+| `SSL_KEY_FILE`                 | `${SSL_DIR}/key.pem`  | Private key file.                                                                                       |
+| `SSL_CHAIN_FILE`               | empty                 | Optional chain file. A path that does not exist is ignored with a warning.                              |
+| `APACHE_DISABLE_OCSP_STAPLING` | `false`               | `true` disables OCSP stapling.                                                                          |
+| `APACHE_DOCUMENT_ROOT`         | `/var/www/app/web`    | Document root.                                                                                          |
+| `APACHE_ACCESS_LOG`            | `/proc/self/fd/1`     | Access log destination (JSON lines).                                                                    |
+| `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                                  |
+| `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                          |
 
 When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
 failed), the container starts HTTP only and logs a warning.
 
 With `APACHE_SSL_REDIRECT=true`, requests for `localhost` are redirected to `https://localhost:8443`, matching a
-`8443:443` port mapping; requests for any other host name are redirected to port 443. The internal `/__health`
+`8443:443` port mapping; requests for any other host name are redirected to port 443. With another `APACHE_HTTPS_PORT`, every host is
+redirected to that port. The internal `/__health`
 endpoint is never redirected.
 
 OCSP stapling is enabled only for certificates you provide: when `SSL_AUTO_GENERATE` is not `true` and
@@ -176,7 +215,7 @@ These values are applied to web requests through the PHP-FPM pool. The CLI uses 
 | `PHP_MEMORY_LIMIT`           | `256M`                                                                       |
 | `PHP_POST_MAX_SIZE`          | `50M`                                                                        |
 | `PHP_SESSION_HANDLER`        | `files`                                                                      |
-| `PHP_SESSION_PATH`           | `/var/lib/php/sessions`                                                      |
+| `PHP_SESSION_PATH`           | `/run/yii2/sessions`                                                         |
 | `PHP_UPLOAD_MAX_FILESIZE`    | `50M`                                                                        |
 
 ## PHP-FPM pool

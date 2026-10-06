@@ -10,18 +10,21 @@ else
     SUFFIX=
 fi
 
+# User and Group only apply when Apache starts as root; a non-root Apache keeps its own user.
+# Runtime state lives under /run/yii2, created at every start by the entrypoint for the running user.
 export APACHE_RUN_USER=www-data
 export APACHE_RUN_GROUP=www-data
-export APACHE_PID_FILE=/var/run/apache2$SUFFIX/apache2.pid
-export APACHE_RUN_DIR=/var/run/apache2$SUFFIX
-export APACHE_LOCK_DIR=/var/lock/apache2$SUFFIX
+export APACHE_PID_FILE=/run/yii2/apache$SUFFIX/apache2.pid
+export APACHE_RUN_DIR=/run/yii2/apache$SUFFIX
+export APACHE_LOCK_DIR=/run/yii2/apache$SUFFIX
 export APACHE_LOG_DIR=/var/log/apache2$SUFFIX
 
 export LANG=C
 export LANG
 
-# Runtime defines and certificate paths decided by the container entrypoint
-# (APACHE_ARGUMENTS, HEALTHCHECK_PATH, SSL_CERT_FILE, SSL_KEY_FILE, SSL_CHAIN_FILE).
-if [ -r /var/run/apache2/runtime.env ] ; then
-    . /var/run/apache2/runtime.env
+# Runtime defines, ports and certificate paths decided by the container entrypoint (APACHE_ARGUMENTS, HEALTHCHECK_PATH,
+# APACHE_HTTP_PORT, APACHE_HTTPS_PORT, SSL_CERT_FILE, SSL_KEY_FILE, SSL_CHAIN_FILE). The file is only sourced when the
+# calling user owns it and it is not a symbolic link, so root never runs a file that another user wrote or replaced.
+if [ -f /run/yii2/apache/runtime.env ] && [ ! -L /run/yii2/apache/runtime.env ] && [ -O /run/yii2/apache/runtime.env ] ; then
+    . /run/yii2/apache/runtime.env
 fi

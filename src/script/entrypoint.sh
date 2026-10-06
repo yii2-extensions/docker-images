@@ -14,25 +14,27 @@ done
 main() {
     print_banner
 
-    if [[ "$(id -u)" == "0" ]]; then
-        log INFO "Running as root - performing system configuration..."
-
-        # Setup directories
-        setup_directories
-
-        # Apache defines, SSL certificates and health endpoints
-        if [[ "${SERVICE_TYPE:-}" == "apache-fpm" ]] && command -v apache2 >/dev/null 2>&1; then
-            apache_configure
-        fi
-
-        # Set final permissions
-        if [[ -d "/var/www/app" ]]; then
-            log INFO "Setting final permissions..."
-            chown -R www-data:www-data /var/www/app/runtime 2>/dev/null || true
-            chown -R www-data:www-data /var/www/app/web/assets 2>/dev/null || true
-        fi
+    if is_root; then
+        log INFO "Running as root (opt-in): initializing as root, Apache and PHP-FPM workers run as www-data"
     else
-        log WARNING "Running as non-root user $(id -un): skipping system configuration (directories, Apache, SSL, permissions)"
+        log INFO "Running as $(current_user_label): the whole stack runs as this user"
+    fi
+
+    # Runtime state for the running user, then the application directories
+    runtime_prepare
+    setup_directories
+
+    # Apache ports, defines, SSL certificates and health endpoints
+    local apache=false
+    if [[ "${SERVICE_TYPE:-}" == "apache-fpm" ]] && command -v apache2 >/dev/null 2>&1; then
+        apache=true
+        apache_configure
+    fi
+
+    # Set final permissions
+    if is_root && [[ -d "/var/www/app" ]]; then
+        log INFO "Setting final permissions..."
+        fix_app_permissions
     fi
 
     # Wait for databases if configured
@@ -50,6 +52,13 @@ main() {
 
     # If no command specified, start supervisor
     if [[ $# -eq 0 ]]; then
+        if [[ "$apache" == true ]]; then
+            apache_check_ports
+        fi
+        # As root, --user root states the choice and silences the supervisord privilege warning
+        if is_root; then
+            exec supervisord -c /etc/supervisor/supervisord.conf --user root
+        fi
         exec supervisord -c /etc/supervisor/supervisord.conf
     else
         exec "$@"

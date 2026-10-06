@@ -184,6 +184,8 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm \
     # Apache Configuration
     APACHE_DOCUMENT_ROOT=/var/www/app/web \
+    APACHE_HTTP_PORT=80 \
+    APACHE_HTTPS_PORT=443 \
     APACHE_ERROR_LOG_FILE=/proc/self/fd/2 \
     # Apache MPM Event Configuration
     APACHE_ASYNC_REQUEST_WORKER_FACTOR=2 \
@@ -225,7 +227,7 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     PHP_DISABLE_FUNCTIONS="exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source" \
     # PHP Session Configuration
     PHP_SESSION_HANDLER=files \
-    PHP_SESSION_PATH=/var/lib/php/sessions \
+    PHP_SESSION_PATH=/run/yii2/sessions \
     # PHP-FPM Configuration
     PHP_FPM_ACCESS_LOG=/proc/self/fd/1 \
     PHP_FPM_CATCH_OUTPUT=yes \
@@ -263,25 +265,21 @@ COPY --chmod=0755 src/script/entrypoint.sh /usr/local/bin/entrypoint
 COPY --chmod=0755 src/script/healthcheck.sh /usr/local/bin/healthcheck
 COPY --chmod=0755 src/script/install-extensions.sh /usr/local/bin/install-extensions
 
-# Layer 04: Runtime directories, then an explicit list of Apache modules, configurations and sites
-RUN install -d -o www-data -g www-data \
-    /var/cache/apache2 \
-    /var/lib/php \
-    /var/lib/php/sessions \
-    /var/lib/php/tmp \
-    /var/run/apache2 \
-    /var/run/php \
-    /var/www/.composer \
-    /var/www/.composer/cache \
-    /var/www/.npm \
-    && install -d -m 0750 -o www-data -g www-data /etc/apache2/ssl \
-    && install -d /var/lock/apache2 /var/www/app \
+# Layer 04: Directories, then an explicit list of Apache modules, configurations and sites
+# /run/yii2 holds the runtime state; the entrypoint creates its content at every start for the running user, so it is
+# world-writable with the sticky bit (like /tmp) instead of belonging to one user. Everything under /etc stays root's.
+RUN install -d -o www-data -g www-data /var/www/.composer /var/www/.composer/cache /var/www/.npm /var/www/app \
+    && install -d -m 1777 /run/yii2 \
+    && chown -R root:root /etc/apache2 \
+    && chmod 0755 /etc/apache2/ssl \
+    && rm -rf /var/cache/apache2 /var/lib/php /var/lock/apache2 /var/run/apache2 \
     && rm -f /etc/apache2/conf-enabled/* /etc/apache2/sites-enabled/* /var/log/apache2/*.log \
     && a2dismod -q mpm_prefork mpm_worker \
     && a2enmod -q mpm_event alias env headers expires filter brotli http2 proxy proxy_fcgi rewrite setenvif ssl \
     && a2enconf -q 01-performance 02-security 03-ssl-tls 04-compression 05-php-fpm 06-logging 07-health \
     && a2ensite -q vhost \
-    && apache2ctl configtest
+    && apache2ctl configtest \
+    && rm -rf /run/yii2/apache
 
 #------------------------------------------------------------------------------
 # END runtime configuration
@@ -304,6 +302,11 @@ LABEL apache.version="2.4" \
 
 WORKDIR /var/www/app
 
+# The whole stack runs as www-data; --user <uid>:<gid> runs it as any user, --user root restores the root start
+# hadolint ignore=DL3066
+USER www-data
+
+# Defaults of APACHE_HTTP_PORT and APACHE_HTTPS_PORT
 EXPOSE 80 443
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD ["healthcheck"]
@@ -321,7 +324,13 @@ ARG PHP_EXTENSIONS_PROD
 ARG PHP_EXTENSIONS_DEV
 ARG PHP_EXTENSIONS_FULL
 
-RUN --mount=type=bind,source=tests,target=/opt/tests,readonly \
+# The suite orchestrates as root and starts the stack as www-data, as an arbitrary UID and as root
+# hadolint ignore=DL3002,DL3066
+USER root
+
+# The suite binds loopback ports; its own network namespace keeps concurrent smoke runs apart, because builders
+# with host networking (the docker-container driver of CI) share the loopback interface between parallel RUN steps
+RUN --network=none --mount=type=bind,source=tests,target=/opt/tests,readonly \
     bash /opt/tests/smoke.sh
 
 #==============================================================================
