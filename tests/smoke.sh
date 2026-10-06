@@ -685,8 +685,10 @@ done
 # Scenario B: HTTP only, public health endpoint disabled, FPM status disabled, custom disable_functions (www-data)
 #------------------------------------------------------------------------------
 use_mode www-data
+# The unused HTTPS port keeps its privileged default; it must not stop a non-root HTTP-only stack from starting
+HTTPS_PORT=443
 reset_app
-if boot_stack "[www-data] HTTP-only stack boots and healthcheck passes with ENABLE_HEALTH_ENDPOINT=false" \
+if boot_stack "[www-data] HTTP-only stack boots on ${HTTP_PORT} with APACHE_HTTPS_PORT=${HTTPS_PORT} and ENABLE_HEALTH_ENDPOINT=false" \
     APACHE_SSL_ENABLED=false ENABLE_HEALTH_ENDPOINT=false SKIP_COMPOSER_INSTALL=true PHP_DISABLE_FUNCTIONS=shell_exec; then
     check "HTTP-only serves the front controller" contains "$(body "${H}/")" '"fixture":"ok"'
     check "PHP_DISABLE_FUNCTIONS=shell_exec applies to web requests" \
@@ -797,8 +799,9 @@ check "[uid] Not writable application directory is reported with the remedy" bas
     "$2" == *"Composer cannot write to /var/www/app as uid=4242(no passwd entry)"* && "$2" == *"Remedy:"* && ! -e "$3" ]]' \
     _ "$ENTRY_RC" "$ENTRY_OUT" "${APP_DIR}/vendor"
 
-# A port below ip_unprivileged_port_start (1024 in build steps) is refused with the remedy before supervisord starts
-if [[ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2>/dev/null || echo 0)" -gt 80 ]]; then
+# A port below ip_unprivileged_port_start (1024 in build steps) is refused with the remedy before supervisord starts:
+# APACHE_HTTP_PORT always, APACHE_HTTPS_PORT only when SSL is active (scenario B boots HTTP-only with 443)
+if [[ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2>/dev/null || echo 0)" -gt 443 ]]; then
     reset_app
     fresh_runtime
     ENTRY_RC=0
@@ -806,6 +809,13 @@ if [[ "$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2>/dev/null || echo 0
         timeout 20 /usr/local/bin/entrypoint 2>&1)" || ENTRY_RC=$?
     check "[uid] Privileged port is refused with the remedy" bash -c '[[ "$1" -eq 1 &&
         "$2" == *"Port 80 is privileged here"* && "$2" == *"APACHE_HTTP_PORT"* ]]' _ "$ENTRY_RC" "$ENTRY_OUT"
+    reset_app
+    fresh_runtime
+    ENTRY_RC=0
+    ENTRY_OUT="$(as_mode env "${BASE_ENV[@]}" APACHE_HTTP_PORT=8080 APACHE_HTTPS_PORT=443 SKIP_COMPOSER_INSTALL=true \
+        timeout 20 /usr/local/bin/entrypoint 2>&1)" || ENTRY_RC=$?
+    check "[uid] Privileged HTTPS port is refused when SSL is active" bash -c '[[ "$1" -eq 1 &&
+        "$2" == *"Port 443 is privileged here"* && "$2" == *"set APACHE_HTTPS_PORT"* ]]' _ "$ENTRY_RC" "$ENTRY_OUT"
 else
     skip "Privileged port refusal (ports below 1024 are not privileged here)"
 fi

@@ -95,13 +95,18 @@ Only services whose host variable is set are checked.
 `composer.json` exists, with `--no-interaction --no-progress --optimize-autoloader --prefer-dist`. `--no-dev` is added
 when `YII_ENV=prod` or `BUILD_TYPE=prod`.
 
-| Variable                 | Default                              | Description                                                                                     |
-| ------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `SKIP_COMPOSER_INSTALL`  | `true` for `prod`, `false` otherwise | `true` skips the install. An explicit value always wins over the variant default.               |
-| `FORCE_COMPOSER_INSTALL` | `false`                              | `true` installs even when `vendor/` already exists.                                             |
-| `FIX_PERMS`              | `true`                               | As root, `true` runs `chown -R www-data:www-data` and `chmod -R g+rwX` on `/var/www/app` first. |
-| `FAIL_ON_COMPOSER_ERROR` | `false`                              | `true` exits with status 1 when the install fails; `false` logs and continues.                  |
-| `COMPOSER_HOME`          | `/var/www/.composer`                 | Set by the image.                                                                               |
+| Variable                 | Default                              | Description                                                                                                  |
+| ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `SKIP_COMPOSER_INSTALL`  | `true` for `prod`, `false` otherwise | `true` skips the install. An explicit value always wins over the variant default.                            |
+| `FORCE_COMPOSER_INSTALL` | `false`                              | `true` installs even when `vendor/` already exists.                                                          |
+| `FIX_PERMS`              | `true`                               | As root, `true` runs `chown -R www-data:www-data` and `chmod -R g+rwX` on `/var/www/app` before the install. |
+| `FAIL_ON_COMPOSER_ERROR` | `false`                              | `true` exits with status 1 when the install fails; `false` logs and continues.                               |
+| `COMPOSER_HOME`          | `/var/www/.composer`                 | Set by the image.                                                                                            |
+
+`FIX_PERMS` acts only when the install runs (not skipped, `composer.json` present, no `vendor/` unless
+`FORCE_COMPOSER_INSTALL=true`), as in v1: it gives `www-data` write access for Composer and leaves the application
+alone otherwise, so the `prod` default never makes the code writable by the web server. In root mode the entrypoint
+always hands `runtime/` and `web/assets/` to `www-data` when they exist.
 
 ## Yii migrations
 

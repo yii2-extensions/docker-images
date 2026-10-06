@@ -15,6 +15,8 @@ readonly SSL_GENERATED_DIR="${YII2_RUN_DIR}/ssl"
 # Certificate pair chosen by ssl_prepare_certificates
 SSL_ACTIVE_CERT_FILE=""
 SSL_ACTIVE_KEY_FILE=""
+# true once apache_configure enabled SSL, the only case where Apache listens on APACHE_HTTPS_PORT
+SSL_ACTIVE=false
 
 apache_configure() {
     local -a defines=()
@@ -40,6 +42,7 @@ apache_configure() {
         log ERROR "APACHE_HTTP_PORT and APACHE_HTTPS_PORT are both ${http_port}"
         log WARNING "SSL setup failed, falling back to HTTP-only"
     elif ssl_prepare_certificates "$ssl_dir" "$ssl_cert_file" "$ssl_key_file" "$ssl_auto_generate"; then
+        SSL_ACTIVE=true
         defines+=(SSL_ENABLED)
         if [[ "$https_port" == "443" ]]; then
             defines+=(SSL_DEFAULT_PORT)
@@ -116,20 +119,26 @@ apache_port() {
     printf '%s' "$((10#$value))"
 }
 
-# Exits with an explanation when a non-root user cannot bind the configured ports. Docker allows every port
-# (ip_unprivileged_port_start=0); hosts networking, some Kubernetes runtimes and build steps keep the 1024 limit.
+# Exits with an explanation when a non-root user cannot bind the ports Apache listens on: APACHE_HTTP_PORT, and
+# APACHE_HTTPS_PORT only when SSL is active (ports.conf). Docker allows every port (ip_unprivileged_port_start=0); hosts
+# networking, some Kubernetes runtimes and build steps keep the 1024 limit.
 apache_check_ports() {
-    local start port
+    local start variable
+    local -a variables=(APACHE_HTTP_PORT)
 
     if is_root || [[ ! -r /proc/sys/net/ipv4/ip_unprivileged_port_start ]]; then
         return 0
     fi
 
+    if [[ "$SSL_ACTIVE" == true ]]; then
+        variables+=(APACHE_HTTPS_PORT)
+    fi
+
     start="$(</proc/sys/net/ipv4/ip_unprivileged_port_start)"
-    for port in "$APACHE_HTTP_PORT" "$APACHE_HTTPS_PORT"; do
-        if ((port < start)); then
-            log ERROR "Port ${port} is privileged here (ip_unprivileged_port_start=${start}) and $(current_user_label) cannot bind it"
-            log INFO "Remedy: set APACHE_HTTP_PORT and APACHE_HTTPS_PORT to ports >= ${start} (for example 8080 and 8443)"
+    for variable in "${variables[@]}"; do
+        if ((${!variable} < start)); then
+            log ERROR "Port ${!variable} is privileged here (ip_unprivileged_port_start=${start}) and $(current_user_label) cannot bind it"
+            log INFO "Remedy: set ${variable} to a port >= ${start} (for example APACHE_HTTP_PORT=8080, APACHE_HTTPS_PORT=8443)"
             exit 1
         fi
     done

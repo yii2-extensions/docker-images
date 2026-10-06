@@ -153,9 +153,9 @@ root:
 - **Any UID**, with `--user <uid>:<gid>` or Compose `user:`. The UID needs no account in the image, so files created
   in a bind-mounted project belong to the host user. The entrypoint cannot change ownership in this mode; when the
   application directory is not writable it says so and names the remedy.
-- **Root**, as an explicit opt-in with `--user root`: the entrypoint initializes as root (directories, `FIX_PERMS`),
-  then Apache and PHP-FPM drop their workers to `www-data`, as in v1. Nothing root sources, executes or loads may be
-  written by `www-data`, and the generated private key is readable by root only.
+- **Root**, as an explicit opt-in with `--user root`: the entrypoint initializes as root (directories, `FIX_PERMS`
+  before a Composer install), then Apache and PHP-FPM drop their workers to `www-data`, as in v1. Nothing root
+  sources, executes or loads may be written by `www-data`, and the generated private key is readable by root only.
 
 Runtime state (pid files, sockets, the Apache runtime environment, generated certificates, PHP sessions and temporary
 files) lives under `/run/yii2` and is created at every start for the running user. In the two non-root modes no
