@@ -591,6 +591,8 @@ scenario_stack() {
     check "${label} Banner reports PHP ${php_running}" grep -q "PHP:.* ${php_running}" "$STACK_LOG"
     check "${label} apache2ctl configtest (runtime defines)" as_mode_piped apache2ctl configtest
     check "${label} Front controller over HTTP" contains "$(body "${H}/site/index")" '"fixture":"ok"'
+    check "${label} Default PHP_DISABLE_FUNCTIONS applies to web requests" \
+        contains "$(body "${H}/site/index")" '"functions":{"exec":false,"shell_exec":false,"parse_ini_file":true}'
     check "${label} Front controller over HTTPS with HTTP/2" \
         test "$(curl -sk --http2 -o /dev/null -w '%{http_version}' -A "$UA" "${S}/site/index")" == "2"
     check "${label} HTTPS response from the application" contains "$(body -k "${S}/site/index")" '"https":true'
@@ -680,13 +682,15 @@ for mode in www-data uid root; do
 done
 
 #------------------------------------------------------------------------------
-# Scenario B: HTTP only, public health endpoint disabled, FPM status disabled (www-data)
+# Scenario B: HTTP only, public health endpoint disabled, FPM status disabled, custom disable_functions (www-data)
 #------------------------------------------------------------------------------
 use_mode www-data
 reset_app
 if boot_stack "[www-data] HTTP-only stack boots and healthcheck passes with ENABLE_HEALTH_ENDPOINT=false" \
-    APACHE_SSL_ENABLED=false ENABLE_HEALTH_ENDPOINT=false SKIP_COMPOSER_INSTALL=true; then
+    APACHE_SSL_ENABLED=false ENABLE_HEALTH_ENDPOINT=false SKIP_COMPOSER_INSTALL=true PHP_DISABLE_FUNCTIONS=shell_exec; then
     check "HTTP-only serves the front controller" contains "$(body "${H}/")" '"fixture":"ok"'
+    check "PHP_DISABLE_FUNCTIONS=shell_exec applies to web requests" \
+        contains "$(body "${H}/")" '"functions":{"exec":true,"shell_exec":false,"parse_ini_file":true}'
     check "HTTP-only does not listen on ${HTTPS_PORT}" bash -c '! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null' _ "$HTTPS_PORT"
     check "Disabled public health endpoint falls through to the application" contains "$(body "${H}/health")" '"fixture":"ok"'
     check "FPM ping is not exposed without ENABLE_FPM_STATUS" contains "$(body "${H}/fpm-ping")" '"fixture":"ok"'

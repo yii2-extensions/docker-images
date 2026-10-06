@@ -11,5 +11,10 @@ echo json_encode(
         'uri' => $_SERVER['REQUEST_URI'] ?? '',
         'https' => ($_SERVER['HTTPS'] ?? '') === 'on',
         'protocol' => $_SERVER['SERVER_PROTOCOL'] ?? '',
+        'functions' => [
+            'exec' => function_exists('exec'),
+            'shell_exec' => function_exists('shell_exec'),
+            'parse_ini_file' => function_exists('parse_ini_file'),
+        ],
     ],
 );

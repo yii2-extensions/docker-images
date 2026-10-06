@@ -224,7 +224,7 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     PHP_ALLOW_URL_FOPEN=0 \
     PHP_ALLOW_URL_INCLUDE=0 \
     PHP_DATE_TIMEZONE="UTC" \
-    PHP_DISABLE_FUNCTIONS="exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source" \
+    PHP_DISABLE_FUNCTIONS="exec,passthru,shell_exec,system,proc_open,popen" \
     # PHP Session Configuration
     PHP_SESSION_HANDLER=files \
     PHP_SESSION_PATH=/run/yii2/sessions \

@@ -244,6 +244,10 @@ exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts o
 - **Apache defaults.** The ineffective `<LimitExcept>` block, the inert global rewrite rules and
   `07-rate-limiting.conf` are removed. Debian's default configuration snippets are disabled, so the `Server` header is
   `Apache` and nothing is logged to files inside the container.
+- **Shorter `PHP_DISABLE_FUNCTIONS` default.** Web requests now block only the shell functions (`exec`, `passthru`,
+  `shell_exec`, `system`, `proc_open`, `popen`); `parse_ini_file` and `show_source` are available again. The list is
+  applied to the PHP-FPM master instead of the pool, so pools you add inherit it and cannot re-enable its functions
+  with `php_admin_value[disable_functions]`; set the variable instead.
 - **PHP-FPM status is opt-in.** Set `ENABLE_FPM_STATUS=true` to serve `PHP_FPM_STATUS_PATH` and `PHP_FPM_PING_PATH`
   to loopback only. `/fpm-status-full` is replaced by `?full` on the status path.
 - **SQL Server drivers.** `sqlsrv` and `pdo_sqlsrv` 5.13 come from the extension installer instead of a patched 5.12.0

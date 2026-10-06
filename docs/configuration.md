@@ -195,28 +195,31 @@ docker exec app curl -s 'http://127.0.0.1/fpm-status?full'
 ## PHP
 
 These values are applied to web requests through the PHP-FPM pool. The CLI uses the variant `php.ini` settings.
+`PHP_DISABLE_FUNCTIONS` is passed to the PHP-FPM master on its command line instead, so it also applies to any pool
+you add. A pool can disable more functions with `php_admin_value[disable_functions]` but cannot re-enable the ones in
+the variable; change the variable instead (empty disables nothing).
 
-| Variable                     | Default                                                                      |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `PHP_ALLOW_URL_FOPEN`        | `0`                                                                          |
-| `PHP_ALLOW_URL_INCLUDE`      | `0`                                                                          |
-| `PHP_DATE_TIMEZONE`          | `UTC`                                                                        |
-| `PHP_DISABLE_FUNCTIONS`      | `exec,passthru,shell_exec,system,proc_open,popen,parse_ini_file,show_source` |
-| `PHP_DISPLAY_ERRORS`         | `0`                                                                          |
-| `PHP_DISPLAY_STARTUP_ERRORS` | `0`                                                                          |
-| `PHP_ERROR_LOG`              | `/proc/self/fd/2`                                                            |
-| `PHP_ERROR_REPORTING`        | `E_ALL & ~E_DEPRECATED`                                                      |
-| `PHP_EXPOSE`                 | `0`                                                                          |
-| `PHP_LOG_ERRORS`             | `1`                                                                          |
-| `PHP_MAX_EXECUTION_TIME`     | `30`                                                                         |
-| `PHP_MAX_FILE_UPLOADS`       | `20`                                                                         |
-| `PHP_MAX_INPUT_TIME`         | `60`                                                                         |
-| `PHP_MAX_INPUT_VARS`         | `1000`                                                                       |
-| `PHP_MEMORY_LIMIT`           | `256M`                                                                       |
-| `PHP_POST_MAX_SIZE`          | `50M`                                                                        |
-| `PHP_SESSION_HANDLER`        | `files`                                                                      |
-| `PHP_SESSION_PATH`           | `/run/yii2/sessions`                                                         |
-| `PHP_UPLOAD_MAX_FILESIZE`    | `50M`                                                                        |
+| Variable                     | Default                                           |
+| ---------------------------- | ------------------------------------------------- |
+| `PHP_ALLOW_URL_FOPEN`        | `0`                                               |
+| `PHP_ALLOW_URL_INCLUDE`      | `0`                                               |
+| `PHP_DATE_TIMEZONE`          | `UTC`                                             |
+| `PHP_DISABLE_FUNCTIONS`      | `exec,passthru,shell_exec,system,proc_open,popen` |
+| `PHP_DISPLAY_ERRORS`         | `0`                                               |
+| `PHP_DISPLAY_STARTUP_ERRORS` | `0`                                               |
+| `PHP_ERROR_LOG`              | `/proc/self/fd/2`                                 |
+| `PHP_ERROR_REPORTING`        | `E_ALL & ~E_DEPRECATED`                           |
+| `PHP_EXPOSE`                 | `0`                                               |
+| `PHP_LOG_ERRORS`             | `1`                                               |
+| `PHP_MAX_EXECUTION_TIME`     | `30`                                              |
+| `PHP_MAX_FILE_UPLOADS`       | `20`                                              |
+| `PHP_MAX_INPUT_TIME`         | `60`                                              |
+| `PHP_MAX_INPUT_VARS`         | `1000`                                            |
+| `PHP_MEMORY_LIMIT`           | `256M`                                            |
+| `PHP_POST_MAX_SIZE`          | `50M`                                             |
+| `PHP_SESSION_HANDLER`        | `files`                                           |
+| `PHP_SESSION_PATH`           | `/run/yii2/sessions`                              |
+| `PHP_UPLOAD_MAX_FILESIZE`    | `50M`                                             |
 
 ## PHP-FPM pool
 
