@@ -59,7 +59,8 @@ docker run -d --name app --user "$(id -u):$(id -g)" -p 8080:80 -p 8443:443 -v "$
 The application answers on `http://localhost:8080` and, with a generated self-signed certificate, on
 `https://localhost:8443`. Composer installs the dependencies at startup when `vendor/` is missing, as the container
 user, so the project directory must be writable by it. Without `--user` the stack runs as `www-data` (UID 33), which
-suits Docker Desktop and named volumes.
+suits Docker Desktop and named volumes. On runtimes that keep ports below 1024 privileged (Kubernetes, `--network
+host`), set `APACHE_HTTP_PORT=8080` and `APACHE_HTTPS_PORT=8443` and map `-p 8080:8080 -p 8443:8443` instead.
 
 With Docker Compose:
 
@@ -163,8 +164,9 @@ process can gain root, so the class of privilege escalation that the root mode m
 Ports 80 and 443 work as a non-root user under `docker run`, because Docker allows unprivileged processes to bind
 every port. Kubernetes, `--network host` and other runtimes that keep ports below 1024 privileged need
 `APACHE_HTTP_PORT` and `APACHE_HTTPS_PORT` (for example `8080` and `8443`); the entrypoint stops with that remedy when
-the configured port cannot be bound. See the [configuration reference](docs/configuration.md#users-and-privileges)
-for the read-only root filesystem flags.
+the configured port cannot be bound. The container side of the port mappings changes with them: `-p 8080:80` becomes
+`-p 8080:8080`. See the [configuration reference](docs/configuration.md#users-and-privileges) for the read-only root
+filesystem flags.
 
 ## Health checks
 
@@ -237,7 +239,8 @@ exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts o
   are no longer rejected with 403. Block unwanted clients at your proxy or firewall if needed.
 - **Single virtual host file.** `sites-available/vhost-ssl.conf` and `sites-available/vhost-ssl-full.conf` are gone;
   `sites-available/vhost.conf` is driven by Apache defines and the entrypoint no longer rewrites configuration files.
-  Port 443 is not opened when `APACHE_SSL_ENABLED=false`. Images that replaced or patched these files must be updated.
+  `APACHE_HTTPS_PORT` is not opened when `APACHE_SSL_ENABLED=false`. Images that replaced or patched these files must
+  be updated.
 - **Apache defaults.** The ineffective `<LimitExcept>` block, the inert global rewrite rules and
   `07-rate-limiting.conf` are removed. Debian's default configuration snippets are disabled, so the `Server` header is
   `Apache` and nothing is logged to files inside the container.

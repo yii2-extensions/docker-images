@@ -112,22 +112,22 @@ when `YII_ENV=prod` or `BUILD_TYPE=prod`.
 
 ## Apache and HTTPS
 
-| Variable                       | Default               | Description                                                                                             |
-| ------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------- |
-| `APACHE_HTTP_PORT`             | `80`                  | HTTP port; the healthcheck uses it.                                                                     |
-| `APACHE_HTTPS_PORT`            | `443`                 | HTTPS listener and virtual host port.                                                                   |
-| `APACHE_SSL_ENABLED`           | `true`                | `true` serves HTTPS with HTTP/2 on `APACHE_HTTPS_PORT`. `false` serves HTTP only and does not open 443. |
-| `APACHE_SSL_REDIRECT`          | `false`               | `true` redirects HTTP to HTTPS with status 301 (see below).                                             |
-| `SSL_AUTO_GENERATE`            | `true`                | `true` generates a self-signed certificate (RSA 2048, valid 365 days) when the files are missing.       |
-| `SSL_DIR`                      | `/etc/apache2/ssl`    | Searched for mounted certificates and `openssl.conf`.                                                   |
-| `SSL_CERT_FILE`                | `${SSL_DIR}/cert.pem` | Certificate file.                                                                                       |
-| `SSL_KEY_FILE`                 | `${SSL_DIR}/key.pem`  | Private key file.                                                                                       |
-| `SSL_CHAIN_FILE`               | empty                 | Optional chain file. A path that does not exist is ignored with a warning.                              |
-| `APACHE_DISABLE_OCSP_STAPLING` | `false`               | `true` disables OCSP stapling.                                                                          |
-| `APACHE_DOCUMENT_ROOT`         | `/var/www/app/web`    | Document root.                                                                                          |
-| `APACHE_ACCESS_LOG`            | `/proc/self/fd/1`     | Access log destination (JSON lines).                                                                    |
-| `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                                  |
-| `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                          |
+| Variable                       | Default               | Description                                                                                                             |
+| ------------------------------ | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `APACHE_HTTP_PORT`             | `80`                  | HTTP port; the healthcheck uses it.                                                                                     |
+| `APACHE_HTTPS_PORT`            | `443`                 | HTTPS listener and virtual host port.                                                                                   |
+| `APACHE_SSL_ENABLED`           | `true`                | `true` serves HTTPS with HTTP/2 on `APACHE_HTTPS_PORT`. `false` serves HTTP only and does not open `APACHE_HTTPS_PORT`. |
+| `APACHE_SSL_REDIRECT`          | `false`               | `true` redirects HTTP to HTTPS with status 301 (see below).                                                             |
+| `SSL_AUTO_GENERATE`            | `true`                | `true` generates a self-signed certificate (RSA 2048, valid 365 days) when the files are missing.                       |
+| `SSL_DIR`                      | `/etc/apache2/ssl`    | Searched for mounted certificates and `openssl.conf`.                                                                   |
+| `SSL_CERT_FILE`                | `${SSL_DIR}/cert.pem` | Certificate file.                                                                                                       |
+| `SSL_KEY_FILE`                 | `${SSL_DIR}/key.pem`  | Private key file.                                                                                                       |
+| `SSL_CHAIN_FILE`               | empty                 | Optional chain file. A path that does not exist is ignored with a warning.                                              |
+| `APACHE_DISABLE_OCSP_STAPLING` | `false`               | `true` disables OCSP stapling.                                                                                          |
+| `APACHE_DOCUMENT_ROOT`         | `/var/www/app/web`    | Document root.                                                                                                          |
+| `APACHE_ACCESS_LOG`            | `/proc/self/fd/1`     | Access log destination (JSON lines).                                                                                    |
+| `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                                                  |
+| `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                                          |
 
 When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
 failed), the container starts HTTP only and logs a warning.

@@ -19,18 +19,25 @@ set -euo pipefail
 # stage runs with RUN --network=none.
 # Starts the stack through the entrypoint in the background, stops it on exit
 # and removes every file it created, so a build-time run leaves no trace.
+# supervisord runs at loglevel info through a wrapper in the suite's PATH (the
+# image keeps warn), so the shutdown checks read how every program stopped.
 #==============================================================================
 
 readonly FIXTURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fixture"
 readonly APP_DIR=/var/www/app
 readonly WORK_DIR=/tmp/yii2-smoke
+readonly SHIM_DIR="${WORK_DIR}/bin"
 readonly STACK_LOG="${WORK_DIR}/stack.log"
+readonly STOP_LOG="${WORK_DIR}/stop.log"
 readonly UA="Mozilla/5.0 (smoke)"
 readonly SNAPSHOT_PATHS=(/var/www /run /etc/apache2 /tmp /var/log)
 readonly BASE_ENV=(COMPOSER_DISABLE_NETWORK=1)
 readonly RUN_DIR=/run/yii2
 readonly APACHE_ENV_FILE="${RUN_DIR}/apache/runtime.env"
 readonly ANY_UID=4242
+# A SIGTERM stop must end within the stopwaitsecs of apache2 and php-fpm added up, the time supervisord needs to
+# force-kill both. A program that ignores its stop signal shows up earlier, as a SIGKILL in the stop log.
+readonly STOP_LIMIT_SECONDS=20
 
 # Current privilege mode (www-data, uid, root) and its ports, set by use_mode
 MODE=root
@@ -46,6 +53,7 @@ FAIL=0
 SKIP=0
 STACK_PID=""
 STOP_SECONDS=0
+STOP_LEFTOVER=""
 ENTRY_OUT=""
 ENTRY_RC=0
 APP_COMPOSER_JSON=""
@@ -186,6 +194,23 @@ stack_process_users() {
     done | sort -u | paste -sd ' '
 }
 
+# Prints "<name>[<pid>]" for every stack process still alive (zombies excluded), space separated.
+stack_processes() {
+    local status
+    for status in /proc/[0-9]*/status; do
+        awk -F '\t' -v pid="${status//[^0-9]/}" '
+            $1 == "Name:" { name = $2 }
+            $1 == "State:" { state = substr($2, 1, 1) }
+            END { if (state != "Z" && name ~ /^(supervisord|apache2|php-fpm)/) print name "[" pid "]" }
+        ' "$status" 2>/dev/null || true
+    done | paste -sd ' '
+}
+
+# Prints the supervised programs that are up, one per line: RUNNING, or STARTING while inside their startsecs.
+running_programs() {
+    supervisorctl status 2>/dev/null | awk '$2 == "RUNNING" || $2 == "STARTING" { sub(/^.*:/, "", $1); print $1 }' || true
+}
+
 port_open() {
     (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
 }
@@ -196,8 +221,8 @@ start_stack() {
     : >"$STACK_LOG"
     chown "$MODE_UID" "$STACK_LOG"
     fresh_runtime
-    "${MODE_PREFIX[@]}" env "${BASE_ENV[@]}" APACHE_HTTP_PORT="$HTTP_PORT" APACHE_HTTPS_PORT="$HTTPS_PORT" "$@" \
-        /usr/local/bin/entrypoint >>"$STACK_LOG" 2>&1 &
+    "${MODE_PREFIX[@]}" env "${BASE_ENV[@]}" PATH="${SHIM_DIR}:${PATH}" APACHE_HTTP_PORT="$HTTP_PORT" \
+        APACHE_HTTPS_PORT="$HTTPS_PORT" "$@" /usr/local/bin/entrypoint >>"$STACK_LOG" 2>&1 &
     STACK_PID=$!
 
     local attempt
@@ -280,21 +305,22 @@ stack_survived() {
     return 1
 }
 
-# Sends SIGTERM to supervisord and records the shutdown time in STOP_SECONDS.
+# Sends SIGTERM to supervisord and waits until it exited, no stack process is left and the HTTP port is closed.
+# Records the time in STOP_SECONDS, what is still running in STOP_LEFTOVER and the stack log lines written since the
+# signal in STOP_LOG. Returns 1 when supervisord itself did not exit and had to be killed.
 stop_stack() {
     STOP_SECONDS=0
+    STOP_LEFTOVER=""
     if [[ -z "$STACK_PID" ]]; then
         return 0
     fi
 
-    local started=$SECONDS
+    local started=$SECONDS logged rc=0
+    logged="$(wc -l <"$STACK_LOG")"
     kill -TERM "$STACK_PID" 2>/dev/null || true
     while kill -0 "$STACK_PID" 2>/dev/null && ((SECONDS - started < 30)); do
         sleep 0.2
     done
-    STOP_SECONDS=$((SECONDS - started))
-
-    local rc=0
     if kill -0 "$STACK_PID" 2>/dev/null; then
         kill -KILL "$STACK_PID" 2>/dev/null || true
         rc=1
@@ -302,10 +328,35 @@ stop_stack() {
     wait "$STACK_PID" 2>/dev/null || true
     STACK_PID=""
 
-    while port_open "$HTTP_PORT" && ((SECONDS - started < 30)); do
+    while { [[ -n "$(stack_processes)" ]] || port_open "$HTTP_PORT"; } && ((SECONDS - started < 30)); do
         sleep 0.2
     done
+    STOP_SECONDS=$((SECONDS - started))
+    STOP_LEFTOVER="$(stack_processes)"
+    tail -n +"$((logged + 1))" "$STACK_LOG" >"$STOP_LOG"
     return $rc
+}
+
+# Usage: shutdown_problems <program...>
+# Prints what made the last stop not graceful, from the supervisord lines logged since the SIGTERM: every program that
+# was up must have stopped on its own or on its stop signal (exit status 0, terminated by SIGTERM or SIGQUIT),
+# none may have needed the SIGKILL supervisord sends after stopwaitsecs, nothing may be left running and the stop must
+# end within STOP_LIMIT_SECONDS. Prints nothing for a graceful stop.
+shutdown_problems() {
+    local program line
+    grep -q 'received SIGTERM indicating exit request' "$STOP_LOG" || echo "supervisord did not log the SIGTERM"
+    [[ $# -gt 0 ]] || echo "no supervised program was up before the stop"
+    for program in "$@"; do
+        line="$(grep -F "stopped: ${program} (" "$STOP_LOG" | tail -n 1)" || true
+        if [[ -z "$line" ]]; then
+            echo "${program}: no 'stopped: ${program}' line"
+        elif ! grep -qE '\((exit status 0|terminated by SIG(TERM|QUIT))\)$' <<<"$line"; then
+            echo "stopped: ${line#*stopped: }"
+        fi
+    done
+    grep -F 'with SIGKILL' "$STOP_LOG" | sed 's/^.* killing /forced kill: /' || true
+    [[ -z "$STOP_LEFTOVER" ]] || echo "still running: ${STOP_LEFTOVER}"
+    ((STOP_SECONDS <= STOP_LIMIT_SECONDS)) || echo "took ${STOP_SECONDS}s (limit ${STOP_LIMIT_SECONDS}s)"
 }
 
 # Usage: run_entrypoint [VAR=value...] -- command...
@@ -386,7 +437,10 @@ if [[ -d "$APP_DIR" ]] && [[ -n "$(ls -A "$APP_DIR")" ]]; then
 fi
 
 rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR" "$APP_DIR"
+mkdir -p "$WORK_DIR" "$APP_DIR" "$SHIM_DIR"
+# supervisord logs a stop with exit status 0 at INFO; every mode user runs the wrapper
+printf '#!/bin/sh\nexec %s "$@" --loglevel=info\n' "$(command -v supervisord)" >"${SHIM_DIR}/supervisord"
+chmod 0755 "$WORK_DIR" "$SHIM_DIR" "${SHIM_DIR}/supervisord"
 snapshot >"${WORK_DIR}/before.list"
 trap finish EXIT
 trap 'LAST_ERROR="line ${LINENO}: ${BASH_COMMAND}"' ERR
@@ -606,10 +660,18 @@ scenario_stack() {
     check "${label} healthcheck recovers when PHP-FPM is back" healthcheck
 
     stack_survived "the ${1} scenario" || true
-    if stop_stack && [[ "$STOP_SECONDS" -le 8 ]]; then
+    local -a programs
+    local problems=""
+    mapfile -t programs < <(running_programs)
+    stop_stack || problems="supervisord did not exit within 30s and was killed"$'\n'
+    problems+="$(shutdown_problems "${programs[@]}")"
+    if [[ -z "${problems//$'\n'/}" ]]; then
         pass "${label} Clean shutdown on SIGTERM (${STOP_SECONDS}s)"
     else
         fail "${label} Clean shutdown on SIGTERM (${STOP_SECONDS}s)"
+        grep -v '^$' <<<"$problems" | sed 's/^/    /'
+        echo "---- supervisord lines since the SIGTERM (programs up before it: ${programs[*]:-none}) ----"
+        grep -E '^[0-9-]{10} [0-9:,]+ [A-Z]{4} ' "$STOP_LOG" | tail -n 20 || true
     fi
 }
 
