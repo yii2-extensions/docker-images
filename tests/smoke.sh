@@ -730,6 +730,21 @@ fi
 # Entrypoint behavior (command mode, root unless stated)
 #------------------------------------------------------------------------------
 use_mode root
+# docker run -e PHP_DISABLE_FUNCTIONS (unset on the host) removes the image default, which supervisord needs; the
+# entrypoint restores it, and the comparison with the image ENV catches a drift between both copies of the default
+reset_app
+fresh_runtime
+disable_rc=0
+disable_value="$(env -u PHP_DISABLE_FUNCTIONS "${BASE_ENV[@]}" APACHE_SSL_ENABLED=false SKIP_COMPOSER_INSTALL=true \
+    /usr/local/bin/entrypoint printenv PHP_DISABLE_FUNCTIONS 2>/dev/null)" || disable_rc=$?
+check "Removed PHP_DISABLE_FUNCTIONS falls back to the image default" \
+    bash -c '[[ "$1" -eq 0 && "$2" == "$3" ]]' _ "$disable_rc" "$disable_value" "$PHP_DISABLE_FUNCTIONS"
+reset_app
+fresh_runtime
+disable_rc=0
+disable_value="$(env "${BASE_ENV[@]}" APACHE_SSL_ENABLED=false SKIP_COMPOSER_INSTALL=true PHP_DISABLE_FUNCTIONS= \
+    /usr/local/bin/entrypoint printenv PHP_DISABLE_FUNCTIONS 2>/dev/null)" || disable_rc=$?
+check "Empty PHP_DISABLE_FUNCTIONS stays empty" bash -c '[[ "$1" -eq 0 && -z "$2" ]]' _ "$disable_rc" "$disable_value"
 wait_env=(WAIT_FOR_SERVICES=true DB_MYSQL_HOST=127.0.0.1 DB_MYSQL_PORT=1 SERVICE_WAIT_TIMEOUT=1 SKIP_COMPOSER_INSTALL=true)
 run_entrypoint "${wait_env[@]}" FAIL_ON_SERVICE_TIMEOUT=false -- echo SMOKE-REACHED
 check "FAIL_ON_SERVICE_TIMEOUT=false continues" entry_reached

@@ -202,7 +202,9 @@ docker exec app curl -s 'http://127.0.0.1/fpm-status?full'
 These values are applied to web requests through the PHP-FPM pool. The CLI uses the variant `php.ini` settings.
 `PHP_DISABLE_FUNCTIONS` is passed to the PHP-FPM master on its command line instead, so it also applies to any pool
 you add. A pool can disable more functions with `php_admin_value[disable_functions]` but cannot re-enable the ones in
-the variable; change the variable instead (empty disables nothing).
+the variable; change the variable instead (empty disables nothing). When the variable is removed from the container
+environment (`-e PHP_DISABLE_FUNCTIONS` or Compose `environment: [PHP_DISABLE_FUNCTIONS]` while it is unset on the
+host), the entrypoint applies the default list.
 
 | Variable                     | Default                                           |
 | ---------------------------- | ------------------------------------------------- |

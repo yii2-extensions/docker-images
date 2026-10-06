@@ -12,6 +12,11 @@ done
 
 # Main execution
 main() {
+    # Docker and Compose remove an image variable passed without a value (-e VAR with VAR unset on the host), and
+    # supervisord refuses its configuration when %(ENV_PHP_DISABLE_FUNCTIONS)s cannot be expanded. Restore the
+    # Dockerfile default in that case; an explicitly empty value stays empty.
+    export PHP_DISABLE_FUNCTIONS="${PHP_DISABLE_FUNCTIONS-exec,passthru,shell_exec,system,proc_open,popen}"
+
     print_banner
 
     if is_root; then
