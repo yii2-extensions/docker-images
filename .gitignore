@@ -1,5 +1,8 @@
 # AI agent local state
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/yii2-docker-environment
 .codex/
 
 # Local environment file copied from .env.example

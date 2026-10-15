@@ -48,7 +48,7 @@ application directories when the application is part of the image:
 ```bash
 docker run -d --read-only --tmpfs /run/yii2:mode=1777 --tmpfs /tmp:mode=1777 \
     --tmpfs /var/www/app/runtime:uid=33,gid=33 --tmpfs /var/www/app/web/assets:uid=33,gid=33 \
-    -p 8080:80 -p 8443:443 my-app
+    -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 my-app
 ```
 
 Ports 80 and 443 can be bound by a non-root user under `docker run` (Docker sets
@@ -110,10 +110,12 @@ always hands `runtime/` and `web/assets/` to `www-data` when they exist.
 
 ## Yii migrations
 
-| Variable                  | Default | Description                                                                                      |
-| ------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `YII_RUN_MIGRATIONS`      | `false` | `true` runs `php yii migrate --interactive=0` as `www-data`. Skipped without `yii` or in `test`. |
-| `FAIL_ON_MIGRATION_ERROR` | `true`  | `true` exits with status 1 when a migration fails; `false` logs and continues.                   |
+| Variable                  | Default | Description                                                                        |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `YII_RUN_MIGRATIONS`      | `false` | `true` runs `php yii migrate --interactive=0`. Skipped without `yii` or in `test`. |
+| `FAIL_ON_MIGRATION_ERROR` | `true`  | `true` exits with status 1 when a migration fails; `false` logs and continues.     |
+
+Migrations run as the application user: the selected non-root UID, or `www-data` in root mode.
 
 ## Apache and HTTPS
 
@@ -252,14 +254,23 @@ environment (`clear_env = no`), so PHP code reads every variable passed to the c
 
 ## Xdebug
 
-Xdebug is loaded in `dev` and `full` only. The image ships no Xdebug settings; configure it with the standard
+Xdebug is loaded in `dev` and `full` only. The PHP-FPM pool keeps the container environment (`clear_env = no`),
+so `XDEBUG_MODE` reaches web requests as well as CLI commands. The image ships no Xdebug settings; configure it with the standard
 [`XDEBUG_MODE`](https://xdebug.org/docs/all_settings#mode) and
 [`XDEBUG_CONFIG`](https://xdebug.org/docs/all_settings#XDEBUG_CONFIG) environment variables:
 
 ```bash
-docker run -d -p 8080:80 -v "$PWD":/var/www/app \
+docker run -d -p 127.0.0.1:8080:80 -v "$PWD":/var/www/app \
     --add-host=host.docker.internal:host-gateway \
     -e XDEBUG_MODE=debug \
+    -e XDEBUG_TRIGGER=1 \
     -e XDEBUG_CONFIG="client_host=host.docker.internal client_port=9003" \
     ghcr.io/yii2-extensions/apache:8.5-debian-dev
 ```
+
+The IDE must listen on port 9003 and map `/var/www/app` to the local application root. Xdebug initiates the
+connection to the IDE; publishing container port 9003 is unnecessary. `XDEBUG_TRIGGER=1` is a local development
+example; omit it and trigger selected requests with the `XDEBUG_TRIGGER` query parameter or cookie instead.
+Use `XDEBUG_MODE=off` when debugging is not required and `XDEBUG_MODE=coverage` for coverage runs. See
+[testing](testing.md) for CLI coverage and [usage examples](examples.md) for the distinction between web and CLI
+PHP settings.

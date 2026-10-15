@@ -26,6 +26,9 @@
 </p>
 <!-- markdownlint-enable MD041 -->
 
+These are container images, not Composer extensions. Use them to run an existing Yii application; they do not
+create an application or install the Yii framework by themselves.
+
 Each image runs Apache (event MPM, HTTP/2, HTTPS) in front of PHP-FPM under `supervisord`, serves the application
 from `/var/www/app/web`, and prepares the application at startup (directories, Composer, migrations) through an
 entrypoint configured with environment variables.
@@ -44,40 +47,67 @@ Images are published to `ghcr.io/yii2-extensions/apache` for `linux/amd64` and `
   not published until it is stable.
 - Variants: `prod`, `dev`, `full`.
 
-Use a rolling tag to receive security updates automatically, or a frozen tag for reproducible deployments.
+Rolling tags move when the release workflow rebuilds them; an existing container does not update itself. Pull the
+selected tag and recreate your container to use a newer image. Use a frozen release tag, or pin the registry digest,
+when you need a fixed image. Verify availability before changing versions:
+
+```bash
+docker buildx imagetools inspect ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
+```
+
+The release workflow publishes stable versions only. Locally generated Bake tags, particularly PHP 8.6 tags, are
+not evidence that those images exist in the registry.
 
 ## Quick start
 
-Run the `dev` variant against an application in the current directory. On Linux, pass your own user so the files the
+First install [Docker Engine](https://docs.docker.com/engine/install/) or Docker Desktop and confirm `docker info`
+succeeds. Docker Compose v2 or newer is needed only for Compose examples; Buildx is needed to build these images.
+Start in an existing application root containing `composer.json` and a Web entry point. The default document root
+is `web/`; the Yii 22.0 basic template uses `public/` and needs the setting described in the installation guide.
+Match the application's own framework and PHP version constraints. See [installation](docs/installation.md) for the complete setup.
+
+Run the `dev` variant against that application in the current directory. On Linux, pass your own user so the files the
 container creates (`vendor/`, `runtime/`, `web/assets/`) belong to you:
 
 ```bash
-docker run -d --name app --user "$(id -u):$(id -g)" -p 8080:80 -p 8443:443 -v "$PWD":/var/www/app \
-    ghcr.io/yii2-extensions/apache:8.5-debian-dev
+docker run -d --name app --user "$(id -u):$(id -g)" -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 -v "$PWD":/var/www/app \
+    ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
 ```
 
 The application answers on `http://localhost:8080` and, with a generated self-signed certificate, on
 `https://localhost:8443`. Composer installs the dependencies at startup when `vendor/` is missing, as the container
 user, so the project directory must be writable by it. Without `--user` the stack runs as `www-data` (UID 33), which
-suits Docker Desktop and named volumes. On runtimes that keep ports below 1024 privileged (Kubernetes, `--network
+can suit Docker Desktop. A named volume must also have suitable ownership; mounting one does not grant UID 33
+write access automatically. On runtimes that keep ports below 1024 privileged (Kubernetes, `--network
 host`), set `APACHE_HTTP_PORT=8080` and `APACHE_HTTPS_PORT=8443` and map `-p 8080:8080 -p 8443:8443` instead.
 
-With Docker Compose:
+With Docker Compose, save this as `compose.yaml` in the application root:
 
 ```yaml
 services:
   app:
-    image: ghcr.io/yii2-extensions/apache:8.5-debian-dev
-    user: "${UID:-1000}:${GID:-1000}"
+    image: ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
+    user: "${APP_UID:?Set APP_UID}:${APP_GID:?Set APP_GID}"
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8443:443"
     volumes:
       - .:/var/www/app
     environment:
       YII_ENV: dev
       YII_DEBUG: "1"
+      FAIL_ON_COMPOSER_ERROR: "true"
 ```
+
+```bash
+APP_UID="$(id -u)" APP_GID="$(id -g)" docker compose up -d
+docker compose logs app
+curl --fail http://127.0.0.1:8080/health
+```
+
+`YII_ENV` and `YII_DEBUG` are available to PHP, but your application entry scripts must read them; setting container
+variables does not override constants already defined by the application. The health endpoint checks the stack,
+so also request an application route. [Usage examples](docs/examples.md) cover CLI commands and cleanup.
 
 For production, build an application image on top of `prod` so the code and its dependencies are part of the image:
 
@@ -87,6 +117,10 @@ FROM ghcr.io/yii2-extensions/apache:8.5-debian-prod-v2.0.0
 COPY --chown=www-data:www-data . /var/www/app
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 ```
+
+Keep credentials, `.env`, `.git`, local `vendor/`, `node_modules/`, runtime files, and uploads out of the build
+context with an application `.dockerignore`. Include `composer.lock`; decide which application Composer scripts and
+plugins may run during the build. The image does not configure your database or persist uploaded files.
 
 ## Variants
 
@@ -146,8 +180,8 @@ docker run -d -p 80:80 -p 443:443 \
 
 ## Users and privileges
 
-The whole stack (the entrypoint, `supervisord`, Apache and PHP-FPM) runs as the container user, and no process is
-root:
+The whole stack (the entrypoint, `supervisord`, Apache and PHP-FPM) runs as the container user. The default and
+arbitrary-UID modes run without root; root mode is an explicit choice:
 
 - **`www-data`** (default, the image declares `USER www-data`).
 - **Any UID**, with `--user <uid>:<gid>` or Compose `user:`. The UID needs no account in the image, so files created
@@ -196,7 +230,7 @@ It accepts the extension names and version syntax of
 It downloads the exact PHP source the image was built from and verifies its SHA-256 checksum, installs the
 toolchain, builds the extensions, then removes the toolchain, the source and the build-only packages while keeping
 the shared libraries the new extensions load. The build fails when a library is left unresolved or PHP reports a
-startup warning. The example above adds a layer of about 2 MB.
+startup warning. The added size depends on the extensions and their runtime libraries.
 
 Ghostscript is not included, so Imagick reads and writes raster formats (JPEG, PNG, WebP, GIF and others) but not
 PDF, PS or EPS. Add it in a derived image when you need them:
@@ -217,7 +251,8 @@ Version 2 contains breaking changes. Review each item before switching tags.
 exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts on Linux (v1 changed the owner of the
   project to `www-data` instead), or `--user root` for the v1 behavior (root initialization, `FIX_PERMS`, workers as
   `www-data`). Derived images need `USER root` before installing packages or extensions and `USER www-data` after;
-  application files copied into a derived image need `COPY --chown=www-data:www-data`.
+  application files copied into a derived image must be readable by the runtime user, and directories used by
+  Composer or the application must be writable (the quick start uses `COPY --chown=www-data:www-data`).
 - **Runtime state moved to `/run/yii2`.** Pid files, the PHP-FPM socket (`/run/yii2/php/php-fpm.sock`), the
   supervisor socket, PHP sessions (`PHP_SESSION_PATH=/run/yii2/sessions`), PHP temporary files and the generated
   self-signed certificate (`/run/yii2/ssl`) are created at every start. Generated certificates are no longer written
@@ -268,6 +303,9 @@ exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts o
 
 ## Development
 
+See [testing](docs/testing.md) for isolated runtime validation and the distinction between the fixture and a real
+application test. No build command below publishes images; never use the `digest-*` targets for local validation.
+
 `docker-bake.hcl` is the single source of truth for PHP versions, variants and tags. Adding a PHP version is one
 entry in its `PHP` variable; an entry whose `base` differs from `version` (a release candidate such as `8.6-rc`) is
 experimental, excluded from the default group and never published.
@@ -297,6 +335,12 @@ Continuous integration:
 | `release.yml`  | Tags `vX.Y.Z`, weekly schedule, manual run | Publishes a release; the weekly run rebuilds the latest release and moves the rolling tags. |
 | `quality.yml`  | Pull requests, pushes                      | Organization quality checks, Hadolint and ShellCheck.                                       |
 | `security.yml` | Pull requests, pushes                      | Organization security checks.                                                               |
+
+## Agent skill
+
+The package-owned [`yii2-docker-environment`](skills/yii2-docker-environment/SKILL.md) skill helps agents select an
+existing tag, prepare an isolated environment, verify HTTP/HTTPS, PHP-FPM and filesystem behavior, and remove only
+resources they created. See [installation and activation](docs/agents.md) and [testing](docs/testing.md).
 
 ## Package information
 

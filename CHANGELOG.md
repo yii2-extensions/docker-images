@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.1.0 Under development
 
+- feat(skills): add an isolated Docker environment skill and document image setup, configuration, debugging and testing.
+
 ## v2.0.0 October 6, 2026
 
 - feat!: rebuild the images with `docker buildx bake`, ship them slimmer, and add `install-extensions`, smoke tests and a new Apache setup.
