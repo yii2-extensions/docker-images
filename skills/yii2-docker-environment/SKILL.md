@@ -3,7 +3,7 @@ name: yii2-docker-environment
 description: Set up or validate a local Yii application environment using yii2-extensions/docker-images, including image selection, UID permissions, HTTP/HTTPS checks, debugging and isolated cleanup. Use for these container images, not PHP extension installation or image publication.
 license: BSD-3-Clause
 metadata:
-  guide: https://github.com/yii2-extensions/docker-images/tree/b2478e42906229b60af8debf33dda6e6f0a0b2cd/docs
+  guide: https://github.com/yii2-extensions/docker-images/tree/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs
 ---
 
 # Run and validate a Yii Docker environment
@@ -15,12 +15,12 @@ local validation pass.
 ## Consult the canonical guides
 
 When a source checkout is available, read its `README.md` and only the relevant `docs/` page. Otherwise use these
-available package guides, pinned to the source revision that introduced this workflow:
+available package guides, pinned to a verified revision with the helper's daemon requirements:
 
-- Requirements, tags, setup: <https://raw.githubusercontent.com/yii2-extensions/docker-images/b2478e42906229b60af8debf33dda6e6f0a0b2cd/docs/installation.md>.
-- Startup flags, permissions, FPM and Xdebug: <https://raw.githubusercontent.com/yii2-extensions/docker-images/b2478e42906229b60af8debf33dda6e6f0a0b2cd/docs/configuration.md>.
-- Mounts, console commands, diagnostics: <https://raw.githubusercontent.com/yii2-extensions/docker-images/b2478e42906229b60af8debf33dda6e6f0a0b2cd/docs/examples.md>.
-- Stack versus application checks: <https://raw.githubusercontent.com/yii2-extensions/docker-images/b2478e42906229b60af8debf33dda6e6f0a0b2cd/docs/testing.md>.
+- Requirements, tags, setup: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/installation.md>.
+- Startup flags, permissions, FPM and Xdebug: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/configuration.md>.
+- Mounts, console commands, diagnostics: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/examples.md>.
+- Stack versus application checks: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/testing.md>.
 
 For another installed or requested revision, use its `docs/` at that revision on GitHub. Switch to the
 documentation site's Markdown URLs only after verifying that those pages are published. Do not substitute another
@@ -44,7 +44,8 @@ bash <skill-directory>/scripts/validate.sh <verified-local-image>
 
 It requires Bash, Docker, curl, Python 3, a non-root host user and a local rootful Linux daemon without
 user-namespace remapping. It rejects unsupported daemon modes before creating resources. It creates a temporary PHP
-fixture, publishes dynamic loopback ports and removes its own resources on exit. It never pulls or builds an image.
+fixture with a private SELinux `:Z` bind label, publishes dynamic loopback ports and removes its own resources on
+exit. It never pulls or builds an image.
 Inspect the helper if adapting the assertions. It tests the stable image defaults, not an arbitrary derived image.
 
 For an actual application, follow the usage and testing guides: request an application route as well as `/health`,

@@ -81,10 +81,11 @@ echo json_encode([
 ], JSON_THROW_ON_ERROR);
 PHP
 
+# Relabel only this disposable fixture for its exclusive container on SELinux hosts.
 docker run -d --pull never --cidfile "$work/cid" --label "yii2-docker-check=$token" \
     --user "$(id -u):$(id -g)" --memory 512m --cpus 1 --pids-limit 128 \
     -p 127.0.0.1::80 -p 127.0.0.1::443 \
-    --mount "type=bind,src=$work/app,dst=/var/www/app" \
+    --volume "$work/app:/var/www/app:Z" \
     -e SKIP_COMPOSER_INSTALL=true -e SKIP_DB_WAIT=true -e YII_RUN_MIGRATIONS=false \
     -e YII_ENV=test -e XDEBUG_MODE=off -e PHP_MEMORY_LIMIT=192M \
     "$image" >/dev/null

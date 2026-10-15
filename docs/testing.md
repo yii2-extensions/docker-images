@@ -24,6 +24,10 @@ memory settings, HTTPS, the internal health command, blocked external access to 
 expected tools, and host file ownership. It removes its own container and fixture on success or failure, preserving
 images and all unrelated resources. It does not run Composer scripts or application migrations.
 
+The helper uses a private `:Z` bind label for its disposable fixture so Docker can relabel it on SELinux hosts.
+Only the newly created fixture is relabeled; do not apply this option to system directories or shared application
+checkouts. See Docker's [SELinux bind-mount guidance](https://docs.docker.com/engine/storage/bind-mounts/#configure-the-selinux-label).
+
 To check the full extension matrix, use the repository's existing smoke stage instead:
 
 ```bash
