@@ -5,3 +5,6 @@
 # Avoid merge conflicts in CHANGELOG
 # https://about.gitlab.com/2015/02/10/gitlab-reduced-merge-conflicts-by-90-percent-with-changelog-placeholders/
 /CHANGELOG.md merge=union
+
+# Keep private agent evaluations out of source distributions.
+/internal export-ignore

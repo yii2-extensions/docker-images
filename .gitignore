@@ -1,5 +1,8 @@
 # AI agent local state
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/yii2-docker-environment
 .codex/
 
 # Local environment file copied from .env.example
@@ -16,3 +19,6 @@ docker-bake.override.json
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Private skill evaluation harnesses, fixtures, and results
+/internal/
