@@ -37,7 +37,9 @@ Rolling tags require a pull and container recreation to adopt updates.
 
 ## Match the document root
 
-The image defaults to `/var/www/app/web`. The Yii 22.0 basic template uses `public/` instead. From that
+The image defaults to `/var/www/app/web`. The
+[Yii 22.0 basic template on branch `22`](https://github.com/yiisoft/yii2-app-basic/tree/22/public) uses `public/`
+instead; templates with `web/index.php` use the image default. From the Yii 22.0
 application's root, prepare its writable directories and pass its actual document root:
 
 ```bash

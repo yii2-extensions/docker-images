@@ -103,11 +103,17 @@ import json
 from pathlib import Path
 import sys
 work = Path(sys.argv[1])
-assert json.loads((work / 'health.json').read_text())['status'] == 'healthy'
+health = json.loads((work / 'health.json').read_text())
+if not isinstance(health, dict) or health.get('status') != 'healthy':
+    raise SystemExit(f'Invalid health response: {health!r}')
 for protocol in ('http', 'https'):
     result = json.loads((work / f'{protocol}.json').read_text())
-    assert result == {'fixture': 'ok', 'https': protocol == 'https', 'memory_limit': '192M',
-        'exec_available': False, 'runtime_write': True}, result
+    expected = {
+        'fixture': 'ok', 'https': protocol == 'https', 'memory_limit': '192M',
+        'exec_available': False, 'runtime_write': True,
+    }
+    if result != expected:
+        raise SystemExit(f'Invalid {protocol} fixture response: expected {expected!r}, got {result!r}')
 print('PASS: health, application HTTP/HTTPS, FPM settings, disabled shell functions and runtime write')
 PY
 [[ "$(curl --noproxy '*' --silent --output /dev/null --write-out '%{http_code}' --max-time 5 "$http/__health")" == 403 ]]

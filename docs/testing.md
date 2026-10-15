@@ -20,7 +20,8 @@ memory settings, HTTPS, the internal health command, blocked external access to 
 expected tools, and host file ownership. It removes its own container and fixture on success or failure, preserving
 images and all unrelated resources. It does not run Composer scripts or application migrations.
 
-For the helper behavior evaluation (successful run, missing image, and cleanup after a forced HTTP failure):
+For the helper behavior evaluation (successful run, missing image, HTTP failure, and rejection of unhealthy or
+incorrect fixture JSON with `PYTHONOPTIMIZE=1`, including cleanup for each case):
 
 ```bash
 bash tests/agent-environment.sh ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0

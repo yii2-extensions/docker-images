@@ -63,7 +63,8 @@ not evidence that those images exist in the registry.
 First install [Docker Engine](https://docs.docker.com/engine/install/) or Docker Desktop and confirm `docker info`
 succeeds. Docker Compose v2 or newer is needed only for Compose examples; Buildx is needed to build these images.
 Start in an existing application root containing `composer.json` and a Web entry point. The default document root
-is `web/`; the Yii 22.0 basic template uses `public/` and needs the setting described in the installation guide.
+is `web/`; the [Yii 22.0 basic template on branch `22`](https://github.com/yiisoft/yii2-app-basic/tree/22/public)
+uses `public/` and needs the setting described in the installation guide.
 Match the application's own framework and PHP version constraints. See [installation](docs/installation.md) for the complete setup.
 
 Run the `dev` variant against that application in the current directory. On Linux, pass your own user so the files the
