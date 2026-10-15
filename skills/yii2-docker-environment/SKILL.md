@@ -28,7 +28,7 @@ Yii Docker project's tags or configuration.
 
 ## Select and prepare
 
-1. Check `docker info`, daemon locality and the host architecture. Report unavailable access without changing daemon permissions. Compose is optional; Buildx is needed for Bake builds only.
+1. Check `docker info`, daemon locality and the host architecture. The fixture helper requires rootful Docker without user-namespace remapping; report unsupported modes without changing daemon configuration or permissions. Compose is optional; Buildx is needed for Bake builds only.
 2. Inspect the requested registry manifest before pulling a new tag. Match the application's PHP constraints and required tools to the README variant table. Experimental Bake targets do not imply a published registry tag.
 3. Inspect the application's bootstrap, lockfile, mounts and test commands before starting it. Determine what reads `YII_ENV`/`YII_DEBUG`; do not assume environment variables override PHP constants.
 4. Use the host UID:GID for Linux bind mounts. Account for hidden image files under a project mount and for the ownership of new named volumes. Avoid root initialization and broad ownership changes on user checkouts.
@@ -42,7 +42,8 @@ For a stack check without application dependencies, use the bundled helper after
 bash <skill-directory>/scripts/validate.sh <verified-local-image>
 ```
 
-It requires Bash, Docker, curl, Python 3, a non-root host user and a local Linux daemon. It creates a temporary PHP
+It requires Bash, Docker, curl, Python 3, a non-root host user and a local rootful Linux daemon without
+user-namespace remapping. It rejects unsupported daemon modes before creating resources. It creates a temporary PHP
 fixture, publishes dynamic loopback ports and removes its own resources on exit. It never pulls or builds an image.
 Inspect the helper if adapting the assertions. It tests the stable image defaults, not an arbitrary derived image.
 

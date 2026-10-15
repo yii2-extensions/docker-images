@@ -13,19 +13,16 @@ bash skills/yii2-docker-environment/scripts/validate.sh \
     ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
 ```
 
-Requirements: Bash, Docker with a reachable local Linux daemon, curl, Python 3, and a non-root host user. The image
-must already exist locally. The helper uses a temporary dependency-free fixture, the host UID:GID, an exclusive
+Requirements: Bash, Docker with a reachable local rootful Linux daemon without user-namespace remapping, curl,
+Python 3, and a non-root host user. The image must already exist locally. Rootless Docker and `userns-remap` change
+[bind-mount UID/GID mapping](https://docs.docker.com/engine/security/rootless/uid-gid-mapping/); the helper rejects
+those modes before creating a fixture or container. These are helper restrictions, not an image compatibility
+claim; use application-specific mount ownership when running images with remapped UIDs. Do not change daemon
+configuration just to run the helper. The helper uses a temporary dependency-free fixture, the host UID:GID, an exclusive
 container ID, and dynamically allocated loopback HTTP/HTTPS ports. It checks application output, effective FPM
 memory settings, HTTPS, the internal health command, blocked external access to `/__health`, CLI execution,
 expected tools, and host file ownership. It removes its own container and fixture on success or failure, preserving
 images and all unrelated resources. It does not run Composer scripts or application migrations.
-
-For the helper behavior evaluation (successful run, missing image, HTTP failure, and rejection of unhealthy or
-incorrect fixture JSON with `PYTHONOPTIMIZE=1`, including cleanup for each case):
-
-```bash
-bash tests/agent-environment.sh ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
-```
 
 To check the full extension matrix, use the repository's existing smoke stage instead:
 

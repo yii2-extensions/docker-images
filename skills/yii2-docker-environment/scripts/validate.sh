@@ -17,7 +17,16 @@ done
     echo 'Run as a non-root host user.' >&2
     exit 1
 }
-docker info >/dev/null
+# Bind-mounted fixture ownership must match the host UID without namespace remapping.
+security_options="$(docker info --format '{{range .SecurityOptions}}{{println .}}{{end}}')"
+while IFS= read -r option; do
+    case "${option%%,*}" in
+        name=rootless | name=userns)
+            echo 'This fixture helper does not support rootless Docker or user-namespace remapping; no resources were created.' >&2
+            exit 1
+            ;;
+    esac
+done <<<"$security_options"
 endpoint="${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}')}"
 [[ "$endpoint" == unix://* ]] || {
     echo 'Use a local Unix-socket Docker daemon for the fixture bind mount.' >&2

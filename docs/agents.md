@@ -28,13 +28,9 @@ An installer listing, a manual `SKILL.md` read, native discovery, native activat
 are separate evidence. Do not claim native client activation from a helper test. The documentation site distributes
 unchanged skill bundles with provenance and checksums; it does not own another editable copy.
 
-## Evaluation
+## Verify the environment
 
-Run the [isolated helper](testing.md#run-an-isolated-image-check) and record its image ID and assertions. Also
-exercise a missing local image: it must fail before allocating a container or a fixture. A failed HTTP check must
-still remove the helper's own resources. Invalid health and fixture values must also be rejected with
-`PYTHONOPTIMIZE=1`; run `tests/agent-environment.sh` for these regression checks. These checks cover execution and
-cleanup, not model skill selection.
-A useful agent task is: “Validate the selected Docker image locally without mounting my application, then report
-which checks still require my application's dependencies.” Assess resource isolation and the distinction between
-stack readiness and application readiness.
+Run the [isolated helper](testing.md#run-an-isolated-image-check), then run the application's own checks with its
+actual dependencies and test configuration. Record the image ID, relevant assertions and missing prerequisites.
+A successful helper run proves its stack checks; native skill discovery and activation require separate client
+evidence and are not established by reading the skill manually.
