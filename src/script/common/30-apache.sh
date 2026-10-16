@@ -27,6 +27,12 @@ apache_configure() {
     local ssl_chain_file="${SSL_CHAIN_FILE:-}"
     local ssl_auto_generate="${SSL_AUTO_GENERATE:-true}"
     local http_port https_port health_path status_path ping_path
+    local document_root="${APACHE_DOCUMENT_ROOT-/var/www/app/web}"
+
+    # Equivalent directory spellings must produce the same public-subtree exception. Keep the filesystem root.
+    while [[ "$document_root" == */ && "$document_root" != / ]]; do
+        document_root="${document_root%/}"
+    done
 
     log INFO "Configuring Apache..."
 
@@ -101,14 +107,15 @@ apache_configure() {
         apache_env_line HEALTHCHECK_PATH_REGEX "$(apache_regex_literal "$health_path")"
         apache_env_line PHP_FPM_STATUS_PATH_REGEX "$(apache_regex_literal "$status_path")"
         apache_env_line PHP_FPM_PING_PATH_REGEX "$(apache_regex_literal "$ping_path")"
-        apache_env_line APACHE_DOCUMENT_ROOT_REGEX "$(apache_regex_literal "${APACHE_DOCUMENT_ROOT}")"
+        apache_env_line APACHE_DOCUMENT_ROOT "$document_root"
+        apache_env_line APACHE_DOCUMENT_ROOT_REGEX "$(apache_regex_literal "$document_root")"
         apache_env_line SSL_CERT_FILE "$SSL_ACTIVE_CERT_FILE"
         apache_env_line SSL_KEY_FILE "$SSL_ACTIVE_KEY_FILE"
         apache_env_line SSL_CHAIN_FILE "$ssl_chain_file"
     } >"$APACHE_RUNTIME_ENV_FILE"
     chmod 0644 "$APACHE_RUNTIME_ENV_FILE"
 
-    export APACHE_HTTP_PORT="$http_port" APACHE_HTTPS_PORT="$https_port"
+    export APACHE_DOCUMENT_ROOT="$document_root" APACHE_HTTP_PORT="$http_port" APACHE_HTTPS_PORT="$https_port"
 
     log SUCCESS "Apache configured (defines: ${defines[*]:-none})"
 }

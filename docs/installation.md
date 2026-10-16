@@ -42,36 +42,28 @@ The image defaults to `/var/www/app/web`. The
 instead; templates with `web/index.php` use the image default. From the Yii 22.0
 application's root, prepare its writable directories and pass its actual document root:
 
-For the `v2.0.0` image below, also mount a directory override so Apache reads the application's `public/.htaccess`
-front-controller rules and serves published assets. Keep this file outside the document root:
+For the `v2.0.0` image below, also adapt its virtual-host configuration so Apache reads the application's
+`public/.htaccess` front-controller rules and serves published assets. Extract the configuration from the image you
+pulled, adjust its public-directory paths and keep both files outside the document root:
 
 ```bash
 mkdir -p docker runtime public/assets
-cat > docker/apache-public.conf <<'EOF'
-<Directory /var/www/app/public>
-    Options -Indexes +FollowSymLinks
-    AllowOverride All
-    Require all granted
-    <FilesMatch "^\.">
-        Require all denied
-    </FilesMatch>
-</Directory>
-<DirectoryMatch "^/var/www/app/public(?:/|$)">
-    Require all granted
-</DirectoryMatch>
-EOF
+docker run --rm --pull never --entrypoint cat ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0 \
+    /etc/apache2/conf-available/vhost-common.conf > docker/vhost-common.original.conf
+sed 's|/var/www/app/web|/var/www/app/public|g; s|(?!web/)|(?!public/)|g' \
+    docker/vhost-common.original.conf > docker/vhost-common.conf
 docker run -d --name yii22-app --user "$(id -u):$(id -g)" \
     -p 127.0.0.1:8080:80 -p 127.0.0.1:8443:443 \
     -e APACHE_DOCUMENT_ROOT=/var/www/app/public \
     --mount type=bind,src="$PWD",dst=/var/www/app \
-    --mount type=bind,src="$PWD/docker/apache-public.conf",dst=/etc/apache2/conf-enabled/99-document-root.conf,readonly \
+    --mount type=bind,src="$PWD/docker/vhost-common.conf",dst=/etc/apache2/conf-available/vhost-common.conf,readonly \
     ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
 ```
 
 With Compose, add `APACHE_DOCUMENT_ROOT: /var/www/app/public` to the service environment and the same read-only
-configuration mount. Adapt both paths in the override when using another document root. The entrypoint's generic
-`web/assets` setup does not prepare every custom document root; ensure the application's own public assets path is
-writable. Advanced templates similarly need the correct `frontend/web` or `backend/web` and their own runtime paths.
+configuration mount. For another document root, adapt the replacement paths and the public-subtree exclusion in the
+extracted configuration. The entrypoint's generic `web/assets` setup does not prepare every custom document root;
+ensure the application's own public assets path is writable. Advanced templates similarly need the correct `frontend/web` or `backend/web` and their own runtime paths.
 See the [Yii installation guide](https://yii2-framework.github.io/docs/guide/start-installation/) for application
 creation; keep that separate from pulling a runtime image.
 
