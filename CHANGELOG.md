@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.2.0 Under development
 
+- docs: enhance `README.md` with comprehensive documentation and AI assistance guides.
+
 ## v2.1.0 October 15, 2026
 
 - feat(skills): add an isolated Docker environment skill and document image setup, configuration, debugging and testing.

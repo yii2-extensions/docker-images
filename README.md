@@ -337,11 +337,36 @@ Continuous integration:
 | `quality.yml`  | Pull requests, pushes                      | Organization quality checks, Hadolint and ShellCheck.                                       |
 | `security.yml` | Pull requests, pushes                      | Organization security checks.                                                               |
 
-## Agent skill
+## Documentation
 
-The package-owned [`yii2-docker-environment`](skills/yii2-docker-environment/SKILL.md) skill helps agents select an
-existing tag, prepare an isolated environment, verify HTTP/HTTPS, PHP-FPM and filesystem behavior, and remove only
-resources they created. See [installation and activation](docs/agents.md) and [testing](docs/testing.md).
+Practical guides for selecting images, running Yii applications, and
+validating containers.
+
+- 📚 [Installation Guide](docs/installation.md): image tags, application
+  mounts, and startup.
+- ⚙️ [Configuration Guide](docs/configuration.md): environment variables,
+  ports, and permissions.
+- 💡 [Usage Examples](docs/examples.md): Compose, CLI commands, and application
+  images.
+- 🔄 [Upgrading from v1](#upgrading-from-v1)
+- 🧪 [Testing Guide](docs/testing.md): isolated image checks and application
+  validation.
+
+## AI assistance
+
+AI agents: use the repository guides and source for the installed revision.
+For a [documentation deployment](https://yii2-framework.github.io/docs/) with
+`llms.txt`, read that index first. When Markdown export is enabled, append
+`index.md` to a page URL.
+
+- 🤖 [yii2-docker-environment skill](docs/agents.md): image selection, isolated
+  checks, and cleanup.
+
+The [skill source](skills/yii2-docker-environment/SKILL.md) covers HTTP/HTTPS,
+PHP-FPM, and filesystem behavior.
+
+If the hosted sources are unavailable, use the repository guides and locally
+available skills.
 
 ## Package information
 
