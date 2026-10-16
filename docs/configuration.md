@@ -136,6 +136,10 @@ Migrations run as the application user: the selected non-root UID, or `www-data`
 | `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                                                  |
 | `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                                          |
 
+The default configuration preserves application cookie attributes, error response bodies and dynamic JSON cache
+policy. Static MIME types retain their explicit cache lifetimes. The default CSP upgrades insecure resources on
+HTTPS responses only; an application-supplied CSP takes precedence.
+
 When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
 failed), the container starts HTTP only and logs a warning.
 
@@ -177,6 +181,9 @@ not written to the access log.
 | `HEALTHCHECK_PATH`       | `/health`  | Public endpoint path, answered with and without a trailing slash.            |
 | `SERVICE_NAME`           | `yii2-app` | `service` field of the response.                                             |
 | `APP_VERSION`            | `unknown`  | `version` field of the response.                                             |
+
+Endpoint variables are literal absolute URL paths. Whitespace, quotes, backslashes, queries and fragments are
+rejected at startup. FPM status and ping paths must also use the characters accepted by PHP-FPM.
 
 The response is a JSON document with the fields `status` (`healthy`), `timestamp`, `service`, `version`,
 `environment` (`YII_ENV`), `php_version` and `checks` (whether `pdo`, `intl` and `opcache` are loaded).

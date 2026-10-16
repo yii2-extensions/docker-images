@@ -318,9 +318,6 @@ docker buildx bake
 # Build one image and load it into the local image store
 docker buildx bake image-8-5-dev --load
 
-# Build one image and run the smoke tests (tests/smoke.sh) inside a build stage
-docker buildx bake smoke-8-5-prod
-
 # Build the experimental PHP 8.6 image
 docker buildx bake image-8-6-prod --load
 
@@ -332,7 +329,7 @@ Continuous integration:
 
 | Workflow       | Trigger                                    | Purpose                                                                                     |
 | -------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `build.yml`    | Pull requests, pushes to `main`            | Builds every PHP version on both architectures and runs the smoke tests.                    |
+| `build.yml`    | Pull requests, pushes to `main`            | Builds every PHP version on both architectures.                                             |
 | `release.yml`  | Tags `vX.Y.Z`, weekly schedule, manual run | Publishes a release; the weekly run rebuilds the latest release and moves the rolling tags. |
 | `quality.yml`  | Pull requests, pushes                      | Organization quality checks, Hadolint and ShellCheck.                                       |
 | `security.yml` | Pull requests, pushes                      | Organization security checks.                                                               |

@@ -136,11 +136,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Build all variants and run the smoke tests.
+      - name: Build all variants.
         working-directory: source
         env:
           BAKE_CACHE_WRITE: ${{ inputs.cache-write }}
-        run: bash ../ci/.github/scripts/bake-build.sh smoke
+        run: bash ../ci/.github/scripts/bake-build.sh build
 
       - name: Push the images by digest.
         if: ${{ inputs.publish && !matrix.php.experimental }}

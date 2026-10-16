@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v2.2.0 Under development
 
 - docs: enhance `README.md` with comprehensive documentation and AI assistance guides.
+- docs/fix: clarify image provenance and document roots; preserve Apache cookies, errors, caching, HTTPS/CSP and routing; lint CI helpers.
 
 ## v2.1.0 October 15, 2026
 

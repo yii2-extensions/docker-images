@@ -1,6 +1,6 @@
 # Validate a Docker environment
 
-Validate the image stack separately from the application. The image fixture checks Apache, PHP-FPM and filesystem
+Validate the image stack separately from the application. The portable helper checks Apache, PHP-FPM and filesystem
 behavior; it does not install Yii, connect to a database or replace application tests.
 
 ## Run an isolated image check
@@ -28,16 +28,15 @@ The helper uses a private `:Z` bind label for its disposable fixture so Docker c
 Only the newly created fixture is relabeled; do not apply this option to system directories or shared application
 checkouts. See Docker's [SELinux bind-mount guidance](https://docs.docker.com/engine/storage/bind-mounts/#configure-the-selinux-label).
 
-To check the full extension matrix, use the repository's existing smoke stage instead:
+Local image builds use the public image targets:
 
 ```bash
-docker buildx bake smoke-8-5-prod
+docker buildx bake image-8-5-dev --load
+bash skills/yii2-docker-environment/scripts/validate.sh ghcr.io/yii2-extensions/apache:8.5-debian-dev
 ```
 
-This builds locally and runs `tests/smoke.sh` in an isolated build network namespace. The suite covers the default
-`www-data`, arbitrary UID and root modes, HTTP/HTTPS, health behavior, extensions, startup flags and shutdown.
-It uses an internal fixture and may download build dependencies. It does not publish an image. Avoid the
-`digest-*` Bake targets: those explicitly push to the registry.
+The CI build workflow builds images; maintainer regression tests are private and run separately. Image builds
+may download dependencies. Avoid the `digest-*` Bake targets for local validation: they push to the registry.
 
 ## Test an application
 
