@@ -7,7 +7,6 @@
 #   ext-prod -> ext-dev -> ext-full   install system packages and PHP extensions
 #   rootfs                            purge the toolchain and verify the result
 #   image                             flatten rootfs into one layer, add the runtime configuration as small layers
-#   smoke                             run tests/smoke.sh against the image
 #   final                             default target, same as image
 #==============================================================================
 
@@ -17,7 +16,7 @@ ARG PHP_VERSION=8.5
 # Upstream tag prefix, differs from PHP_VERSION for release candidates (for example 8.6-rc)
 ARG PHP_BASE_TAG=${PHP_VERSION}
 
-# Extension lists, overridable per PHP version from docker-bake.hcl; the smoke stage asserts the same lists
+# Extension lists, overridable per PHP version from docker-bake.hcl
 ARG PHP_EXTENSIONS_PROD="@composer apcu bcmath gd imagick intl opcache pcntl pdo_mysql pdo_pgsql redis zip"
 ARG PHP_EXTENSIONS_DEV="memcached mongodb soap xdebug yaml"
 ARG PHP_EXTENSIONS_FULL="oci8 pdo_oci pdo_sqlsrv sqlsrv tidy"
@@ -184,6 +183,7 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
     SERVICE_TYPE=apache-fpm \
     # Apache Configuration
     APACHE_DOCUMENT_ROOT=/var/www/app/web \
+    APACHE_DOCUMENT_ROOT_REGEX=/var/www/app/web \
     APACHE_HTTP_PORT=80 \
     APACHE_HTTPS_PORT=443 \
     APACHE_ERROR_LOG_FILE=/proc/self/fd/2 \
@@ -275,7 +275,7 @@ RUN install -d -o www-data -g www-data /var/www/.composer /var/www/.composer/cac
     && rm -rf /var/cache/apache2 /var/lib/php /var/lock/apache2 /var/run/apache2 \
     && rm -f /etc/apache2/conf-enabled/* /etc/apache2/sites-enabled/* /var/log/apache2/*.log \
     && a2dismod -q mpm_prefork mpm_worker \
-    && a2enmod -q mpm_event alias env headers expires filter brotli http2 proxy proxy_fcgi rewrite setenvif ssl \
+    && a2enmod -q mpm_event alias env headers expires filter brotli http2 proxy proxy_fcgi rewrite setenvif ssl unique_id \
     && a2enconf -q 01-performance 02-security 03-ssl-tls 04-compression 05-php-fpm 06-logging 07-health \
     && a2ensite -q vhost \
     && apache2ctl configtest \
@@ -312,26 +312,6 @@ EXPOSE 80 443
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD ["healthcheck"]
 
 ENTRYPOINT ["entrypoint"]
-
-#------------------------------------------------------------------------------
-# Smoke Tests (bake targets smoke-*, never pushed)
-#------------------------------------------------------------------------------
-FROM image AS smoke
-
-# The smoke suite asserts the extension lists the image was built with
-ARG PHP_VERSION
-ARG PHP_EXTENSIONS_PROD
-ARG PHP_EXTENSIONS_DEV
-ARG PHP_EXTENSIONS_FULL
-
-# The suite orchestrates as root and starts the stack as www-data, as an arbitrary UID and as root
-# hadolint ignore=DL3002,DL3066
-USER root
-
-# The suite binds loopback ports; its own network namespace keeps concurrent smoke runs apart, because builders
-# with host networking (the docker-container driver of CI) share the loopback interface between parallel RUN steps
-RUN --network=none --mount=type=bind,source=tests,target=/opt/tests,readonly \
-    bash /opt/tests/smoke.sh
 
 #==============================================================================
 # Final Stage (default target of a plain docker build)

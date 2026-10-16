@@ -136,6 +136,15 @@ Migrations run as the application user: the selected non-root UID, or `www-data`
 | `APACHE_ERROR_LOG_FILE`        | `/proc/self/fd/2`     | Error log destination.                                                                                                  |
 | `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                                          |
 
+`APACHE_DOCUMENT_ROOT` selects the application's public directory; it does not relocate the application root
+`/var/www/app` used by startup, Composer or migrations. The sensitive-directory rule covers source directories at
+that application root and one level below it, excluding the configured public subtree. If you serve application
+files from another root or add aliases, configure access restrictions for those paths explicitly.
+
+The default configuration preserves application cookie attributes, error response bodies and dynamic JSON cache
+policy. Static MIME types retain their explicit cache lifetimes. The default CSP upgrades insecure resources on
+HTTPS responses only; an application-supplied CSP takes precedence.
+
 When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
 failed), the container starts HTTP only and logs a warning.
 
@@ -178,6 +187,10 @@ not written to the access log.
 | `SERVICE_NAME`           | `yii2-app` | `service` field of the response.                                             |
 | `APP_VERSION`            | `unknown`  | `version` field of the response.                                             |
 
+Non-empty endpoint values are literal absolute URL paths. Whitespace, quotes, backslashes, queries and fragments
+are rejected at startup. FPM status and ping paths must also use the characters accepted by PHP-FPM. An empty
+`HEALTHCHECK_PATH` uses `/health`.
+
 The response is a JSON document with the fields `status` (`healthy`), `timestamp`, `service`, `version`,
 `environment` (`YII_ENV`), `php_version` and `checks` (whether `pdo`, `intl` and `opcache` are loaded).
 
@@ -192,6 +205,10 @@ It does not depend on `ENABLE_HEALTH_ENDPOINT` or `APACHE_SSL_REDIRECT`.
 | `ENABLE_FPM_STATUS`   | `false`       | `true` serves the PHP-FPM status and ping pages to loopback only. |
 | `PHP_FPM_STATUS_PATH` | `/fpm-status` | Status page path. Append `?full` for the per-process status.      |
 | `PHP_FPM_PING_PATH`   | `/fpm-ping`   | Ping path; answers `pong`.                                        |
+
+Explicitly empty FPM values are passed through unchanged; they do not select the defaults. An empty status path
+disables FPM's status page. Keep the ping path non-empty because an empty value can prevent FPM workers from
+starting. To disable the Apache status and ping routes, set `ENABLE_FPM_STATUS=false`.
 
 Query them from inside the container:
 

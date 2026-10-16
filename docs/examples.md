@@ -44,6 +44,7 @@ PHP sessions default to `/run/yii2/sessions`. Treat runtime state and generated 
 ephemeral; use mounted certificates and an application-managed session store when persistence is required.
 For an advanced template, set `APACHE_DOCUMENT_ROOT` to its actual `frontend/web` or `backend/web` and prepare
 its corresponding runtime and assets directories; the default paths target a single `web/` entry point.
+For `v2.0.0`, adapt the [directory override](installation.md#match-the-document-root) to that path as well.
 
 ## Configuration and diagnostics
 

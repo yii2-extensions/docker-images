@@ -3,7 +3,7 @@ name: yii2-docker-environment
 description: Set up or validate a local Yii application environment using yii2-extensions/docker-images, including image selection, UID permissions, HTTP/HTTPS checks, debugging and isolated cleanup. Use for these container images, not PHP extension installation or image publication.
 license: BSD-3-Clause
 metadata:
-  guide: https://github.com/yii2-extensions/docker-images/tree/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs
+  guide: https://github.com/yii2-extensions/docker-images
 ---
 
 # Run and validate a Yii Docker environment
@@ -14,17 +14,23 @@ local validation pass.
 
 ## Consult the canonical guides
 
-When a source checkout is available, read its `README.md` and only the relevant `docs/` page. Otherwise use these
-available package guides, pinned to a verified revision with the helper's daemon requirements:
+Identify the image actually used by the container, or the selected local image, with Docker inspect. Record its
+image ID, registry digest when available, platform and tag. Tags can move; an image digest is not a Git commit.
+Use verified build provenance or `org.opencontainers.image.revision` to locate matching source documentation in
+<https://github.com/yii2-extensions/docker-images>. If no source revision can be established, report that gap.
+When the task targets a source checkout, inspect its current `HEAD` and files even when clean. Uncommitted
+files have no matching SHA; the checkout alone does not establish the running image's source revision.
 
-- Requirements, tags, setup: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/installation.md>.
-- Startup flags, permissions, FPM and Xdebug: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/configuration.md>.
-- Mounts, console commands, diagnostics: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/examples.md>.
-- Stack versus application checks: <https://raw.githubusercontent.com/yii2-extensions/docker-images/72c2a0e2d7d7ed862f6fa4d441d8c124684d3e05/docs/testing.md>.
+Read the matching `README.md` and only the relevant guide:
 
-For another installed or requested revision, use its `docs/` at that revision on GitHub. Switch to the
-documentation site's Markdown URLs only after verifying that those pages are published. Do not substitute another
-Yii Docker project's tags or configuration.
+- `docs/installation.md`: requirements, tags, setup.
+- `docs/configuration.md`: startup flags, permissions, FPM and Xdebug.
+- `docs/examples.md`: mounts, console commands, diagnostics.
+- `docs/testing.md`: stack versus application checks.
+
+Use hosted pages or snapshots only when their source revision matches. If matching guides are unavailable or
+offline, inspect available local guides, Dockerfiles, scripts and image configuration, and state the limits.
+Do not substitute another Yii Docker project's tags or configuration.
 
 ## Select and prepare
 
