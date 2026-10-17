@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v2.2.0 Under development
+## v2.2.0 October 16, 2026
 
 - docs: enhance `README.md` with comprehensive documentation and AI assistance guides.
 - docs/fix: clarify image provenance and document roots; preserve Apache cookies, errors, caching, HTTPS/CSP and routing; lint CI helpers.
