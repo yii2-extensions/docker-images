@@ -145,6 +145,11 @@ The default configuration preserves application cookie attributes, error respons
 policy. Static MIME types retain their explicit cache lifetimes. The default CSP upgrades insecure resources on
 HTTPS responses only; an application-supplied CSP takes precedence.
 
+JSON access logs keep their field names and numeric types. Valid UTF-8 is preserved; bytes outside valid UTF-8
+sequences are represented as `\u00HH`, one code point per original byte. Literal backslashes remain literal.
+Encoding runs inside Apache without a logging subprocess, using the selected access-log destination and Apache's
+normal write-error reporting. The default unbuffered writer serializes whole records across workers.
+
 When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
 failed), the container starts HTTP only and logs a warning.
 

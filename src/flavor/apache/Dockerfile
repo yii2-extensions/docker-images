@@ -5,6 +5,7 @@
 #
 # Build flow:
 #   ext-prod -> ext-dev -> ext-full   install system packages and PHP extensions
+#   apache-json                       compile the native JSON log module against the runtime Apache
 #   rootfs                            purge the toolchain and verify the result
 #   image                             flatten rootfs into one layer, add the runtime configuration as small layers
 #   final                             default target, same as image
@@ -43,12 +44,16 @@ ARG IPE_GD_WITHOUTAVIF=1
 # Extension list, default declared before the first stage
 ARG PHP_EXTENSIONS_PROD
 
-# Layer 01: System packages (curl, openssl and ca-certificates are listed so the toolchain purge keeps them)
+# Layer 01: Runtime and build packages; resolve Apache and its SDK together, then purge the SDK in rootfs
+# curl, openssl and ca-certificates are listed so the toolchain purge keeps them
 # The auto-installed package list is saved because the installer marks some of them, toolchain included, as manual
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
+    apache2-dev \
     ca-certificates \
     curl \
+    gcc \
+    libc6-dev \
     openssl \
     supervisor \
     && apt-mark showauto >/usr/src/apt-auto-packages.txt \
@@ -61,6 +66,15 @@ COPY --from=installer /usr/bin/install-php-extensions /usr/local/bin/
 # Layer 03: Production extensions
 # hadolint ignore=SC2086
 RUN install-php-extensions ${PHP_EXTENSIONS_PROD}
+
+# Compile against the same Apache package as the runtime, keeping headers and compilers out of the final image.
+FROM ext-prod AS apache-json
+
+WORKDIR /build
+COPY src/apache/ ./
+RUN test "$(dpkg-query -W -f='${Version}' apache2-bin)" = "$(dpkg-query -W -f='${Version}' apache2-dev)" \
+    && apxs -c -Wc,-std=c99 -Wc,-Wall -Wc,-Wextra -Wc,-Werror mod_yii2_log_json.c \
+    && install -D -m 0755 .libs/mod_yii2_log_json.so /out/mod_yii2_log_json.so
 
 #------------------------------------------------------------------------------
 # Development Extensions
@@ -124,6 +138,7 @@ if [[ ${#ghostscript[@]} -gt 0 ]]; then
     apt-get purge -y "${ghostscript[@]}"
 fi
 
+apt-get purge -y apache2-dev
 bash /mnt/install-extensions --purge /usr/src/apt-auto-packages.txt
 
 if [[ "${BUILD_TYPE}" == "prod" ]]; then
@@ -148,6 +163,7 @@ read -r -a deps <<<"${PHPIZE_DEPS}"
 
 # Toolchain and sources gone, every ELF file resolves its libraries, PHP and PHP-FPM start cleanly
 bash /mnt/install-extensions --verify
+[[ ! -e /usr/bin/apxs && ! -d /usr/include/apache2 ]]
 
 # Node.js tooling, when present, must run
 if [[ -e /usr/local/bin/node ]]; then
@@ -253,6 +269,7 @@ ENV BUILD_TYPE=${BUILD_TYPE} \
 
 # Layer 02: Apache, PHP-FPM, PHP and supervisor configuration
 COPY src/etc/apache2/ /etc/apache2/
+COPY --from=apache-json /out/mod_yii2_log_json.so /usr/lib/apache2/modules/mod_yii2_log_json.so
 COPY src/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
 COPY src/etc/php/${BUILD_TYPE}.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY src/supervisor/supervisord.conf /etc/supervisor/
@@ -275,7 +292,7 @@ RUN install -d -o www-data -g www-data /var/www/.composer /var/www/.composer/cac
     && rm -rf /var/cache/apache2 /var/lib/php /var/lock/apache2 /var/run/apache2 \
     && rm -f /etc/apache2/conf-enabled/* /etc/apache2/sites-enabled/* /var/log/apache2/*.log \
     && a2dismod -q mpm_prefork mpm_worker \
-    && a2enmod -q mpm_event alias env headers expires filter brotli http2 proxy proxy_fcgi rewrite setenvif ssl unique_id \
+    && a2enmod -q mpm_event alias env headers expires filter brotli http2 proxy proxy_fcgi rewrite setenvif ssl unique_id yii2_log_json \
     && a2enconf -q 01-performance 02-security 03-ssl-tls 04-compression 05-php-fpm 06-logging 07-health \
     && a2ensite -q vhost \
     && apache2ctl configtest \
