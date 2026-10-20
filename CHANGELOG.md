@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.4.0 Under development
+
 ## v2.3.0 October 20, 2026
 
 - docs: use the shared Composer bootstrap and retain optional repository/manual skill installation.
