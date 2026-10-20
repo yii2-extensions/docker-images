@@ -11,13 +11,10 @@
 
 <p align="center">
     <a href="https://github.com/yii2-extensions/docker-images/actions/workflows/build.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/build.yml?style=for-the-badge&logo=docker&logoColor=white&label=Build" alt="Build">
-    </a>
-    <a href="https://github.com/yii2-extensions/docker-images/actions/workflows/quality.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/quality.yml?style=for-the-badge&logo=github&label=Quality" alt="Quality">
+        <img src="https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/build.yml?style=for-the-badge&label=Build&logo=github" alt="Build">
     </a>
     <a href="https://github.com/yii2-extensions/docker-images/actions/workflows/security.yml" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/security.yml?style=for-the-badge&logo=github&label=Security" alt="Security">
+        <img src="https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/security.yml?style=for-the-badge&label=Security&logo=github" alt="Security">
     </a>
 </p>
 
@@ -369,9 +366,16 @@ available skills.
 
 [![GitHub Release](https://img.shields.io/github/v/release/yii2-extensions/docker-images?style=for-the-badge&logo=git&logoColor=white&label=Release)](https://github.com/yii2-extensions/docker-images/releases)
 
+## Project status
+
+[![Quality](https://img.shields.io/github/actions/workflow/status/yii2-extensions/docker-images/quality.yml?style=for-the-badge&label=Quality&logo=github)](https://github.com/yii2-extensions/docker-images/actions/workflows/quality.yml)
+
 ## Our social networks
 
 [![Follow on X](https://img.shields.io/badge/-Follow%20on%20X-1DA1F2.svg?style=for-the-badge&logo=x&logoColor=white&labelColor=000000)](https://x.com/Terabytesoftw)
+[![Follow on Facebook](https://img.shields.io/badge/-Follow%20on%20Facebook-1877F2.svg?style=for-the-badge&logo=facebook&logoColor=white&labelColor=000000)](https://www.facebook.com/wilmer.arambula.9)
+[![Join our Subreddit](https://img.shields.io/badge/-Join%20our%20Subreddit-FF4500.svg?style=for-the-badge&logo=reddit&logoColor=white&labelColor=000000)](https://www.reddit.com/r/Yii2/)
+[![Join on Telegram](https://img.shields.io/badge/-Join%20on%20Telegram-26A5E4.svg?style=for-the-badge&logo=telegram&logoColor=white&labelColor=000000)](https://t.me/yii_framework_in_english)
 
 ## License
 

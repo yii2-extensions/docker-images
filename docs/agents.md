@@ -6,6 +6,21 @@ PHP fixture; validating an actual Yii application remains a separate step.
 
 ## Install and activate
 
+### Composer installation
+
+This bundle is not a Composer package. After the [one-time plugin setup](https://yii2-framework.github.io/docs/project/ai-agents/#composer-installation),
+set `auto-sync` to `true` in `skills.json` and register its Git source once. Subsequent Composer install/update
+operations synchronize it automatically while `auto-sync` is enabled:
+
+```bash
+composer skills:add yii2-extensions/docker-images --ref=main --skill=yii2-docker-environment
+composer skills:show
+```
+
+If `auto-sync` is `false`, run `composer skills:update` after dependency installation or updates.
+
+### Optional npx installation
+
 From the application root, use a local checkout until public listing confirms the skill exists on the default
 branch:
 
@@ -34,3 +49,5 @@ Run the [isolated helper](testing.md#run-an-isolated-image-check), then run the 
 actual dependencies and test configuration. Record the image ID, relevant assertions and missing prerequisites.
 A successful helper run proves its stack checks; native skill discovery and activation require separate client
 evidence and are not established by reading the skill manually.
+
+[Back to documentation](../README.md#documentation)

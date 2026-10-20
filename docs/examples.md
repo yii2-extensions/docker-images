@@ -91,3 +91,5 @@ docker rm app
 For Compose, run `docker compose down` from that application's project. It preserves named volumes by default.
 Remove test volumes only when you created them for that test and no longer need their data. Do not use `prune`,
 bulk removal, or another project's Compose configuration to clean up this environment.
+
+[Back to documentation](../README.md#documentation)

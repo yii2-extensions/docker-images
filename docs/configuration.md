@@ -296,3 +296,5 @@ example; omit it and trigger selected requests with the `XDEBUG_TRIGGER` query p
 Use `XDEBUG_MODE=off` when debugging is not required and `XDEBUG_MODE=coverage` for coverage runs. See
 [testing](testing.md) for CLI coverage and [usage examples](examples.md) for the distinction between web and CLI
 PHP settings.
+
+[Back to documentation](../README.md#documentation)

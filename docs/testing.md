@@ -3,6 +3,27 @@
 Validate the image stack separately from the application. The portable helper checks Apache, PHP-FPM and filesystem
 behavior; it does not install Yii, connect to a database or replace application tests.
 
+## Repository quality and security jobs
+
+This Docker-only package has no Composer or PHP test suite. CI runs the shared repository quality checks, Hadolint,
+ShellCheck, workflow security, and Docker Buildx image builds. Run the available quality tools from the repository root:
+
+```bash
+actionlint
+codespell --config .github/linters/.codespellrc --skip=./.git,./vendor/*,./node_modules/*,./internal/*,./runtime/*
+editorconfig-checker -config .github/linters/.editorconfig-checker.json
+markdownlint-cli2 --config .github/linters/.markdown-lint.yml '**/*.md' '#vendor/**' '#node_modules/**' '#internal/**' '#runtime/**'
+prettier --check '**/*.md' '**/*.{yml,yaml}' '!runtime/**' '!internal/**'
+yamllint -d 'extends: default\nrules:\n  comments:\n    min-spaces-from-content: 1\n  line-length: disable\n  truthy: disable' .github
+bash .github/scripts/lint.sh hadolint
+bash .github/scripts/lint.sh shellcheck
+zizmor --persona=pedantic .github
+gitleaks git --config .github/linters/.gitleaks.toml --redact
+```
+
+These commands require their named CLIs on `PATH`; the Docker image validation/build steps below require Docker. The shared
+workflow's pinned tool versions and hosted security credentials are separate from this local run.
+
 ## Run an isolated image check
 
 From a source checkout, pull a verified release and run the skill's portable helper:
@@ -62,3 +83,5 @@ startup migrations; it does not select or isolate a database for your test suite
 Record the image tag/digest, architecture, user, commands, assertions and any skipped checks. Read
 [configuration](configuration.md) when web and CLI PHP settings differ, and [agent setup](agents.md) for skill
 installation and activation checks.
+
+[Back to documentation](../README.md#documentation)
