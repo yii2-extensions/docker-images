@@ -1,8 +1,15 @@
 {
     "Exclude": [
+        "^composer\\.lock$",
+        "^runtime/",
+        "^vendor/",
+        "^internal/",
+        "^node_modules/",
+        "^foxy\\.lock$",
+        "^\\.phpunit\\.cache/",
+        "^code_coverage/",
         "^\\.claude/",
         "^\\.codex/",
-        "^\\.vscode/",
-        "^runtime/"
+        "^\\.vscode/"
     ]
 }

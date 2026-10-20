@@ -3,31 +3,79 @@
 Validate the image stack separately from the application. The portable helper checks Apache, PHP-FPM and filesystem
 behavior; it does not install Yii, connect to a database or replace application tests.
 
-## Repository quality and security jobs
-
 This Docker-only package has no Composer or PHP test suite. CI runs the shared repository quality checks, Hadolint,
-ShellCheck, workflow security, and Docker Buildx image builds. Run the available quality tools from the repository root:
+ShellCheck, workflow security, and Docker Buildx image builds.
+
+Tool references:
+
+- [Actionlint](https://github.com/rhysd/actionlint) for GitHub Actions workflow linting.
+- [Codespell](https://github.com/codespell-project/codespell) for spelling checks.
+- [Docker Buildx](https://docs.docker.com/build/) for image builds.
+- [EditorConfig Checker](https://github.com/editorconfig-checker/editorconfig-checker) for EditorConfig compliance.
+- [Gitleaks](https://github.com/gitleaks/gitleaks) for secret scanning.
+- [Hadolint](https://github.com/hadolint/hadolint) for Dockerfile linting.
+- [Markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for Markdown linting.
+- [Prettier](https://prettier.io/) for Markdown and YAML formatting checks.
+- [ShellCheck](https://www.shellcheck.net/) for shell script linting.
+- [Yamllint](https://github.com/adrienverge/yamllint) for YAML linting.
+- [Zizmor](https://github.com/zizmorcore/zizmor) for GitHub Actions security audits.
+
+## Repository quality checks
+
+Make the CLI tools used by the shared quality workflow available on `PATH`:
+actionlint with its ShellCheck helper, codespell, EditorConfig Checker, markdownlint-cli2, Prettier and
+yamllint. Run each check from the repository root:
 
 ```bash
 actionlint
-codespell --config .github/linters/.codespellrc --skip=./.git,./vendor/*,./node_modules/*,./internal/*,./runtime/*
+codespell --config .github/linters/.codespellrc
 editorconfig-checker -config .github/linters/.editorconfig-checker.json
-markdownlint-cli2 --config .github/linters/.markdown-lint.yml '**/*.md' '#vendor/**' '#node_modules/**' '#internal/**' '#runtime/**'
-prettier --check '**/*.md' '**/*.{yml,yaml}' '!runtime/**' '!internal/**'
-yamllint -d 'extends: default
-rules:
-  comments:
-    min-spaces-from-content: 1
-  line-length: disable
-  truthy: disable' .github
-bash .github/scripts/lint.sh hadolint
-bash .github/scripts/lint.sh shellcheck
+markdownlint-cli2 --config .github/linters/.markdown-lint.yml '**/*.md'
+prettier --check --config .prettierrc.json --ignore-path .prettierignore '**/*.md' '**/*.{yml,yaml}'
+yamllint -c .github/linters/.yamllint.yml .github
+```
+
+The linter configuration lives in `.github/linters`, and the Prettier configuration in `.prettierrc.json` and
+`.prettierignore`. CI uses the same files.
+
+## Workflow security checks
+
+Make zizmor and Gitleaks available on `PATH`. Audit the current workflow files
+with the same pedantic persona used by the shared security workflow:
+
+```bash
 zizmor --persona=pedantic .github
+```
+
+Scan Git history for secrets with the repository's Gitleaks configuration:
+
+```bash
 gitleaks git --config .github/linters/.gitleaks.toml --redact
 ```
 
-These commands require their named CLIs on `PATH`; the Docker image validation/build steps below require Docker. The shared
-workflow's pinned tool versions and hosted security credentials are separate from this local run.
+Findings make the commands fail; inspect them rather than disabling the checks.
+
+Zizmor needs GitHub API access for its online audits. If the tool runs offline,
+report that limit separately. To request an offline audit explicitly:
+
+```bash
+zizmor --persona=pedantic --offline .github
+```
+
+The shared workflows' pinned tool versions and hosted security credentials are separate from these local
+commands. Report hosted CI execution separately and keep generated reports in ignored `internal/`.
+
+## Dockerfile and shell script linters
+
+Hadolint and ShellCheck run through digest-pinned container images with the configuration in `.github/linters`.
+The helper requires Docker and matches the `hadolint` and `shellcheck` jobs of the quality workflow:
+
+```bash
+bash .github/scripts/lint.sh hadolint
+bash .github/scripts/lint.sh shellcheck
+```
+
+The Docker image validation and build steps below also require Docker.
 
 ## Run an isolated image check
 
