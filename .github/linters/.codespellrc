@@ -1,3 +1,3 @@
 [codespell]
-skip = ./.git,.claude/*,.codex/*,.vscode/*,runtime/*
+skip = ./.git,./.vscode/*,./composer.lock,./runtime/*,./vendor/*,./internal/*,./node_modules/*,./foxy.lock,./.phpunit.cache/*,./code_coverage/*,./.claude/*,./.codex/*
 ignore-words-list = cript

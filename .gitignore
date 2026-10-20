@@ -1,24 +1,36 @@
-# AI agent local state
+# AI agents (if present)
+.codex
 .claude/*
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/yii2-docker-environment
-.codex/
 
-# Local environment file copied from .env.example
-.env
-
-# Local bake overrides, read automatically by docker buildx bake when present
+# docker bake local overrides, read automatically by docker buildx bake when present
 docker-bake.override.hcl
 docker-bake.override.json
 
-# Editor and IDE project files
-.idea/
-.vscode/
+# environment file copied from .env.example
+.env
 
-# Operating system files
+# gitHub copilot config (if present)
+.github/agents/**
+.github/copilot-instructions.md
+.github/copilot/**
+.github/instructions/**
+.github/prompts/**
+.github/skills/**
+
+# mac ds_store (if present)
 .DS_Store
-Thumbs.db
 
-# Private skill evaluation harnesses, fixtures, and results
+# phpstorm project (if present)
+.idea
+
+# private maintainer files (if present)
 /internal/
+
+# vscode project (if present)
+.vscode
+
+# windows thumbnail cache (if present)
+Thumbs.db

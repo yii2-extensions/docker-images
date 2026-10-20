@@ -10,6 +10,22 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
+[*.js]
+indent_size = 2
+
+[*.scss]
+indent_size = 2
+
+[*.css]
+indent_size = 2
+
+[package.json]
+indent_size = 2
+
+[package-lock.json]
+indent_size = 2
+
+# Docker Bake definitions.
 [*.hcl]
 indent_size = 2
 
@@ -17,7 +33,17 @@ indent_size = 2
 indent_size = 2
 trim_trailing_whitespace = false
 
-[*.{yml,yaml}]
+[*.php]
+ij_php_space_before_short_closure_left_parenthesis = false
+ij_php_space_after_type_cast = true
+
+[*.yaml]
+indent_size = 2
+
+[*.yml]
+indent_size = 2
+
+[*.xml.dist]
 indent_size = 2
 
 [LICENSE*]
