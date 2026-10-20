@@ -85,3 +85,5 @@ notably it disables automatic certificate generation and enables displayed PHP e
 Check container logs, `/health`, and an application route. A healthy PHP stack does not prove the application's
 routes, database credentials or migrations work. [Configuration](configuration.md) describes startup behavior and
 [testing](testing.md) explains isolated validation.
+
+[Back to documentation](../README.md#documentation)
