@@ -14,7 +14,12 @@ codespell --config .github/linters/.codespellrc --skip=./.git,./vendor/*,./node_
 editorconfig-checker -config .github/linters/.editorconfig-checker.json
 markdownlint-cli2 --config .github/linters/.markdown-lint.yml '**/*.md' '#vendor/**' '#node_modules/**' '#internal/**' '#runtime/**'
 prettier --check '**/*.md' '**/*.{yml,yaml}' '!runtime/**' '!internal/**'
-yamllint -d 'extends: default\nrules:\n  comments:\n    min-spaces-from-content: 1\n  line-length: disable\n  truthy: disable' .github
+yamllint -d 'extends: default
+rules:
+  comments:
+    min-spaces-from-content: 1
+  line-length: disable
+  truthy: disable' .github
 bash .github/scripts/lint.sh hadolint
 bash .github/scripts/lint.sh shellcheck
 zizmor --persona=pedantic .github
