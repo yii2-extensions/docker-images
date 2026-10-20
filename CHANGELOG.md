@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v2.4.0 Under development
 
+- ci: update workflows to `yii2-framework/actions` `v2.0.1` pinned to its release commit.
+
 ## v2.3.0 October 20, 2026
 
 - docs: use the shared Composer bootstrap and retain optional repository/manual skill installation.
