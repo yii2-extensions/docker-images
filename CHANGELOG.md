@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ci: update workflows to `yii2-framework/actions` `v2.0.1` pinned to its release commit.
 - ci: update linter configurations and workflows for improved quality checks.
+- docs: refactor documentation for clarity and consistency.
 
 ## v2.3.0 October 20, 2026
 

@@ -1,14 +1,15 @@
 # Configuration reference
 
-Every setting is an environment variable read when the container starts. The default is the value set by the image
-or, when the image does not set the variable, the value the entrypoint falls back to.
+Every setting is an environment variable read when the container starts. The default is the value set by the image or,
+when the image does not set the variable, the value the entrypoint falls back to.
 
 ## Startup sequence
 
 The entrypoint runs these steps in order and then starts the command.
 
 1. Prints a banner with the variant, PHP version, user, `YII_ENV` and `YII_DEBUG`.
-2. Creates the runtime state in `/run/yii2` and the application directories, configures Apache, fixes permissions (root).
+2. Creates the runtime state in `/run/yii2` and the application directories, configures Apache, fixes permissions
+   (root).
 3. Waits for the configured services, when enabled.
 4. Runs `composer install`, unless skipped.
 5. Runs the Yii migrations, when enabled.
@@ -17,15 +18,15 @@ The entrypoint runs these steps in order and then starts the command.
 Step 2 creates `runtime`, `web/assets` and `web/uploads` under `/var/www/app` and writes the Apache ports and defines
 for HTTPS, the health endpoint and the PHP-FPM status. As root it also creates the `www-data` home directories and
 assigns `runtime` and `web/assets` to `www-data`, skipping any path that is or passes through a symbolic link; as any
-other user it creates what it can and logs the remedy for what it cannot write. Apache configuration lives under `/etc/apache2` and is static: the entrypoint only
-selects which sections apply through Apache defines, it never rewrites configuration files.
+other user it creates what it can and logs the remedy for what it cannot write. Apache configuration lives under
+`/etc/apache2` and is static: the entrypoint only selects which sections apply through Apache defines, it never rewrites
+configuration files.
 
 ## Users and privileges
 
-The stack runs as the container user: `www-data` by default, any UID:GID with `--user` (no passwd entry needed), or
-root with `--user root`, where Apache and PHP-FPM drop their workers to `www-data`. `supervisord` cannot assign
-programs to another user unless it is root, so custom programs in `/etc/supervisor/conf.d` only keep `user=` lines in
-root mode.
+The stack runs as the container user: `www-data` by default, any UID:GID with `--user` (no passwd entry needed), or root
+with `--user root`, where Apache and PHP-FPM drop their workers to `www-data`. `supervisord` cannot assign programs to
+another user unless it is root, so custom programs in `/etc/supervisor/conf.d` only keep `user=` lines in root mode.
 
 | Path                   | Content                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------ |
@@ -36,11 +37,11 @@ root mode.
 | `/run/yii2/sessions`   | PHP sessions (`PHP_SESSION_PATH`)                                              |
 | `/run/yii2/tmp`        | PHP upload and temporary files                                                 |
 
-The entrypoint creates these directories at every start for the running user; in root mode they belong to root,
-except `sessions` and `tmp`, which belong to `www-data`. `/etc/apache2/envvars` sources `runtime.env` only when the
-calling user owns it, so run `docker exec` as the container user (the default) to get the same Apache configuration.
-In root mode nothing that root sources, executes or loads as configuration is writable by `www-data`; in the
-non-root modes no process can become root.
+The entrypoint creates these directories at every start for the running user; in root mode they belong to root, except
+`sessions` and `tmp`, which belong to `www-data`. `/etc/apache2/envvars` sources `runtime.env` only when the calling
+user owns it, so run `docker exec` as the container user (the default) to get the same Apache configuration. In root
+mode nothing that root sources, executes or loads as configuration is writable by `www-data`; in the non-root modes no
+process can become root.
 
 A read-only root filesystem works with tmpfs mounts for the runtime state and the temporary directory, plus writable
 application directories when the application is part of the image:
@@ -104,9 +105,9 @@ when `YII_ENV=prod` or `BUILD_TYPE=prod`.
 | `COMPOSER_HOME`          | `/var/www/.composer`                 | Set by the image.                                                                                            |
 
 `FIX_PERMS` acts only when the install runs (not skipped, `composer.json` present, no `vendor/` unless
-`FORCE_COMPOSER_INSTALL=true`), as in v1: it gives `www-data` write access for Composer and leaves the application
-alone otherwise, so the `prod` default never makes the code writable by the web server. In root mode the entrypoint
-always hands `runtime/` and `web/assets/` to `www-data` when they exist.
+`FORCE_COMPOSER_INSTALL=true`), as in v1: it gives `www-data` write access for Composer and leaves the application alone
+otherwise, so the `prod` default never makes the code writable by the web server. In root mode the entrypoint always
+hands `runtime/` and `web/assets/` to `www-data` when they exist.
 
 ## Yii migrations
 
@@ -137,26 +138,25 @@ Migrations run as the application user: the selected non-root UID, or `www-data`
 | `APACHE_ARGUMENTS`             | empty                 | Extra arguments for `apache2ctl`; the entrypoint appends its own `-D` defines.                                          |
 
 `APACHE_DOCUMENT_ROOT` selects the application's public directory; it does not relocate the application root
-`/var/www/app` used by startup, Composer or migrations. The sensitive-directory rule covers source directories at
-that application root and one level below it, excluding the configured public subtree. If you serve application
-files from another root or add aliases, configure access restrictions for those paths explicitly.
+`/var/www/app` used by startup, Composer or migrations. The sensitive-directory rule covers source directories at that
+application root and one level below it, excluding the configured public subtree. If you serve application files from
+another root or add aliases, configure access restrictions for those paths explicitly.
 
-The default configuration preserves application cookie attributes, error response bodies and dynamic JSON cache
-policy. Static MIME types retain their explicit cache lifetimes. The default CSP upgrades insecure resources on
-HTTPS responses only; an application-supplied CSP takes precedence.
+The default configuration preserves application cookie attributes, error response bodies and dynamic JSON cache policy.
+Static MIME types retain their explicit cache lifetimes. The default CSP upgrades insecure resources on HTTPS responses
+only; an application-supplied CSP takes precedence.
 
-JSON access logs keep their field names and numeric types. Valid UTF-8 is preserved; bytes outside valid UTF-8
-sequences are represented as `\u00HH`, one code point per original byte. Literal backslashes remain literal.
-Encoding runs inside Apache without a logging subprocess, using the selected access-log destination and Apache's
-normal write-error reporting. The default unbuffered writer serializes whole records across workers.
+JSON access logs keep their field names and numeric types. Valid UTF-8 is preserved; bytes outside valid UTF-8 sequences
+are represented as `\u00HH`, one code point per original byte. Literal backslashes remain literal. Encoding runs inside
+Apache without a logging subprocess, using the selected access-log destination and Apache's normal write-error
+reporting. The default unbuffered writer serializes whole records across workers.
 
-When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation
-failed), the container starts HTTP only and logs a warning.
+When HTTPS is enabled but no certificate is usable (files missing and `SSL_AUTO_GENERATE=false`, or generation failed),
+the container starts HTTP only and logs a warning.
 
 With `APACHE_SSL_REDIRECT=true`, requests for `localhost` are redirected to `https://localhost:8443`, matching a
-`8443:443` port mapping; requests for any other host name are redirected to port 443. With another `APACHE_HTTPS_PORT`, every host is
-redirected to that port. The internal `/__health`
-endpoint is never redirected.
+`8443:443` port mapping; requests for any other host name are redirected to port 443. With another `APACHE_HTTPS_PORT`,
+every host is redirected to that port. The internal `/__health` endpoint is never redirected.
 
 OCSP stapling is enabled only for certificates you provide: when `SSL_AUTO_GENERATE` is not `true` and
 `APACHE_DISABLE_OCSP_STAPLING` is not `true`.
@@ -181,9 +181,9 @@ Each variable maps to the [MPM directive](https://httpd.apache.org/docs/2.4/mod/
 
 ## Health endpoints
 
-The health script is part of the image and runs through Apache and PHP-FPM. Application rewrite rules and
-`.htaccess` files do not apply to it, nothing is written to the application directory, and served health requests are
-not written to the access log.
+The health script is part of the image and runs through Apache and PHP-FPM. Application rewrite rules and `.htaccess`
+files do not apply to it, nothing is written to the application directory, and served health requests are not written to
+the access log.
 
 | Variable                 | Default    | Description                                                                  |
 | ------------------------ | ---------- | ---------------------------------------------------------------------------- |
@@ -192,16 +192,16 @@ not written to the access log.
 | `SERVICE_NAME`           | `yii2-app` | `service` field of the response.                                             |
 | `APP_VERSION`            | `unknown`  | `version` field of the response.                                             |
 
-Non-empty endpoint values are literal absolute URL paths. Whitespace, quotes, backslashes, queries and fragments
-are rejected at startup. FPM status and ping paths must also use the characters accepted by PHP-FPM. An empty
+Non-empty endpoint values are literal absolute URL paths. Whitespace, quotes, backslashes, queries and fragments are
+rejected at startup. FPM status and ping paths must also use the characters accepted by PHP-FPM. An empty
 `HEALTHCHECK_PATH` uses `/health`.
 
-The response is a JSON document with the fields `status` (`healthy`), `timestamp`, `service`, `version`,
-`environment` (`YII_ENV`), `php_version` and `checks` (whether `pdo`, `intl` and `opcache` are loaded).
+The response is a JSON document with the fields `status` (`healthy`), `timestamp`, `service`, `version`, `environment`
+(`YII_ENV`), `php_version` and `checks` (whether `pdo`, `intl` and `opcache` are loaded).
 
 The path `/__health` is reserved. It is always enabled, answers loopback requests only and backs the `healthcheck`
-command that the Docker `HEALTHCHECK` runs, so the container turns unhealthy when Apache or PHP-FPM stops answering.
-It does not depend on `ENABLE_HEALTH_ENDPOINT` or `APACHE_SSL_REDIRECT`.
+command that the Docker `HEALTHCHECK` runs, so the container turns unhealthy when Apache or PHP-FPM stops answering. It
+does not depend on `ENABLE_HEALTH_ENDPOINT` or `APACHE_SSL_REDIRECT`.
 
 ## PHP-FPM status
 
@@ -211,9 +211,9 @@ It does not depend on `ENABLE_HEALTH_ENDPOINT` or `APACHE_SSL_REDIRECT`.
 | `PHP_FPM_STATUS_PATH` | `/fpm-status` | Status page path. Append `?full` for the per-process status.      |
 | `PHP_FPM_PING_PATH`   | `/fpm-ping`   | Ping path; answers `pong`.                                        |
 
-Explicitly empty FPM values are passed through unchanged; they do not select the defaults. An empty status path
-disables FPM's status page. Keep the ping path non-empty because an empty value can prevent FPM workers from
-starting. To disable the Apache status and ping routes, set `ENABLE_FPM_STATUS=false`.
+Explicitly empty FPM values are passed through unchanged; they do not select the defaults. An empty status path disables
+FPM's status page. Keep the ping path non-empty because an empty value can prevent FPM workers from starting. To disable
+the Apache status and ping routes, set `ENABLE_FPM_STATUS=false`.
 
 Query them from inside the container:
 
@@ -224,9 +224,9 @@ docker exec app curl -s 'http://127.0.0.1/fpm-status?full'
 ## PHP
 
 These values are applied to web requests through the PHP-FPM pool. The CLI uses the variant `php.ini` settings.
-`PHP_DISABLE_FUNCTIONS` is passed to the PHP-FPM master on its command line instead, so it also applies to any pool
-you add. A pool can disable more functions with `php_admin_value[disable_functions]` but cannot re-enable the ones in
-the variable; change the variable instead (empty disables nothing). When the variable is removed from the container
+`PHP_DISABLE_FUNCTIONS` is passed to the PHP-FPM master on its command line instead, so it also applies to any pool you
+add. A pool can disable more functions with `php_admin_value[disable_functions]` but cannot re-enable the ones in the
+variable; change the variable instead (empty disables nothing). When the variable is removed from the container
 environment (`-e PHP_DISABLE_FUNCTIONS` or Compose `environment: [PHP_DISABLE_FUNCTIONS]` while it is unset on the
 host), the entrypoint applies the default list.
 
@@ -270,15 +270,15 @@ host), the entrypoint applies the default list.
 | `PHP_FPM_SLOWLOG_TIMEOUT` | `5s`              |
 | `PHP_FPM_START_SERVERS`   | `5`               |
 
-Each variable maps to the [pool directive](https://www.php.net/manual/en/install.fpm.configuration.php) of the same
-role (`pm`, `pm.max_children`, `request_terminate_timeout`, `rlimit_files` and so on). The pool keeps the container
+Each variable maps to the [pool directive](https://www.php.net/manual/en/install.fpm.configuration.php) of the same role
+(`pm`, `pm.max_children`, `request_terminate_timeout`, `rlimit_files` and so on). The pool keeps the container
 environment (`clear_env = no`), so PHP code reads every variable passed to the container.
 
 ## Xdebug
 
-Xdebug is loaded in `dev` and `full` only. The PHP-FPM pool keeps the container environment (`clear_env = no`),
-so `XDEBUG_MODE` reaches web requests as well as CLI commands. The image ships no Xdebug settings; configure it with the standard
-[`XDEBUG_MODE`](https://xdebug.org/docs/all_settings#mode) and
+Xdebug is loaded in `dev` and `full` only. The PHP-FPM pool keeps the container environment (`clear_env = no`), so
+`XDEBUG_MODE` reaches web requests as well as CLI commands. The image ships no Xdebug settings; configure it with the
+standard [`XDEBUG_MODE`](https://xdebug.org/docs/all_settings#mode) and
 [`XDEBUG_CONFIG`](https://xdebug.org/docs/all_settings#XDEBUG_CONFIG) environment variables:
 
 ```bash
@@ -290,11 +290,10 @@ docker run -d -p 127.0.0.1:8080:80 -v "$PWD":/var/www/app \
     ghcr.io/yii2-extensions/apache:8.5-debian-dev
 ```
 
-The IDE must listen on port 9003 and map `/var/www/app` to the local application root. Xdebug initiates the
-connection to the IDE; publishing container port 9003 is unnecessary. `XDEBUG_TRIGGER=1` is a local development
-example; omit it and trigger selected requests with the `XDEBUG_TRIGGER` query parameter or cookie instead.
-Use `XDEBUG_MODE=off` when debugging is not required and `XDEBUG_MODE=coverage` for coverage runs. See
-[testing](testing.md) for CLI coverage and [usage examples](examples.md) for the distinction between web and CLI
-PHP settings.
+The IDE must listen on port 9003 and map `/var/www/app` to the local application root. Xdebug initiates the connection
+to the IDE; publishing container port 9003 is unnecessary. `XDEBUG_TRIGGER=1` is a local development example; omit it
+and trigger selected requests with the `XDEBUG_TRIGGER` query parameter or cookie instead. Use `XDEBUG_MODE=off` when
+debugging is not required and `XDEBUG_MODE=coverage` for coverage runs. See [testing](testing.md) for CLI coverage and
+[usage examples](examples.md) for the distinction between web and CLI PHP settings.
 
 [Back to documentation](../README.md#documentation)
