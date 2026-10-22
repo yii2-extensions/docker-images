@@ -57,8 +57,8 @@ bash <skill-directory>/scripts/validate.sh <verified-local-image>
 It requires Bash, Docker, curl, Python 3, a non-root host user and a local rootful Linux daemon without user-namespace
 remapping. It rejects unsupported daemon modes before creating resources. It creates a temporary PHP fixture with a
 private SELinux `:Z` bind label, publishes dynamic loopback ports and removes its own resources on exit. It never pulls
-or builds an image. Inspect the helper if adapting the assertions. It tests the stable image defaults, not an arbitrary
-derived image.
+or builds an image. Inspect the helper if adapting the assertions. It tests the selected local image's defaults. It does
+not verify stable-image provenance or exclude derived images.
 
 For an actual application, follow the usage and testing guides: request an application route as well as `/health`,
 verify writable state, then run only the application's defined checks. `/health` can pass without a working Yii
