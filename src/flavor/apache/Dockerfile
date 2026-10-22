@@ -25,7 +25,7 @@ ARG PHP_EXTENSIONS_FULL="oci8 pdo_oci pdo_sqlsrv sqlsrv tidy"
 #------------------------------------------------------------------------------
 # Build Tools
 #------------------------------------------------------------------------------
-FROM mlocati/php-extension-installer:2.12.0 AS installer
+FROM mlocati/php-extension-installer:2.12.1 AS installer
 
 FROM node:24-trixie-slim AS node
 
