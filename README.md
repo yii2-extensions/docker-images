@@ -23,12 +23,12 @@
 </p>
 <!-- markdownlint-enable MD041 -->
 
-These are container images, not Composer extensions. Use them to run an existing Yii application; they do not
-create an application or install the Yii framework by themselves.
+These are container images, not Composer extensions. Use them to run an existing Yii application; they do not create an
+application or install the Yii framework by themselves.
 
-Each image runs Apache (event MPM, HTTP/2, HTTPS) in front of PHP-FPM under `supervisord`, serves the application
-from `/var/www/app/web`, and prepares the application at startup (directories, Composer, migrations) through an
-entrypoint configured with environment variables.
+Each image runs Apache (event MPM, HTTP/2, HTTPS) in front of PHP-FPM under `supervisord`, serves the application from
+`/var/www/app/web`, and prepares the application at startup (directories, Composer, migrations) through an entrypoint
+configured with environment variables.
 
 ## Tags
 
@@ -40,8 +40,8 @@ Images are published to `ghcr.io/yii2-extensions/apache` for `linux/amd64` and `
 | `<php>-debian-<variant>-v<version>` | `8.5-debian-prod-v2.0.0` | Frozen at release time.                                                                     |
 | `latest`                            | `latest`                 | Rolling: the `prod` variant of the newest stable PHP version (currently 8.5).               |
 
-- PHP versions: `8.3`, `8.4`, `8.5`. PHP 8.6 is built in CI from its release candidate as an experimental job and is
-  not published until it is stable.
+- PHP versions: `8.3`, `8.4`, `8.5`. PHP 8.6 is built in CI from its release candidate as an experimental job and is not
+  published until it is stable.
 - Variants: `prod`, `dev`, `full`.
 
 Rolling tags move when the release workflow rebuilds them; an existing container does not update itself. Pull the
@@ -52,17 +52,17 @@ when you need a fixed image. Verify availability before changing versions:
 docker buildx imagetools inspect ghcr.io/yii2-extensions/apache:8.5-debian-dev-v2.0.0
 ```
 
-The release workflow publishes stable versions only. Locally generated Bake tags, particularly PHP 8.6 tags, are
-not evidence that those images exist in the registry.
+The release workflow publishes stable versions only. Locally generated Bake tags, particularly PHP 8.6 tags, are not
+evidence that those images exist in the registry.
 
 ## Quick start
 
 First install [Docker Engine](https://docs.docker.com/engine/install/) or Docker Desktop and confirm `docker info`
-succeeds. Docker Compose v2 or newer is needed only for Compose examples; Buildx is needed to build these images.
-Start in an existing application root containing `composer.json` and a Web entry point. The default document root
-is `web/`; the [Yii 22.0 basic template on branch `22`](https://github.com/yiisoft/yii2-app-basic/tree/22/public)
-uses `public/` and needs the setting described in the installation guide.
-Match the application's own framework and PHP version constraints. See [installation](docs/installation.md) for the complete setup.
+succeeds. Docker Compose v2 or newer is needed only for Compose examples; Buildx is needed to build these images. Start
+in an existing application root containing `composer.json` and a Web entry point. The default document root is `web/`;
+the [Yii 22.0 basic template on branch `22`](https://github.com/yiisoft/yii2-app-basic/tree/22/public) uses `public/`
+and needs the setting described in the installation guide. Match the application's own framework and PHP version
+constraints. See [installation](docs/installation.md) for the complete setup.
 
 Run the `dev` variant against that application in the current directory. On Linux, pass your own user so the files the
 container creates (`vendor/`, `runtime/`, `web/assets/`) belong to you:
@@ -74,10 +74,10 @@ docker run -d --name app --user "$(id -u):$(id -g)" -p 127.0.0.1:8080:80 -p 127.
 
 The application answers on `http://localhost:8080` and, with a generated self-signed certificate, on
 `https://localhost:8443`. Composer installs the dependencies at startup when `vendor/` is missing, as the container
-user, so the project directory must be writable by it. Without `--user` the stack runs as `www-data` (UID 33), which
-can suit Docker Desktop. A named volume must also have suitable ownership; mounting one does not grant UID 33
-write access automatically. On runtimes that keep ports below 1024 privileged (Kubernetes, `--network
-host`), set `APACHE_HTTP_PORT=8080` and `APACHE_HTTPS_PORT=8443` and map `-p 8080:8080 -p 8443:8443` instead.
+user, so the project directory must be writable by it. Without `--user` the stack runs as `www-data` (UID 33), which can
+suit Docker Desktop. A named volume must also have suitable ownership; mounting one does not grant UID 33 write access
+automatically. On runtimes that keep ports below 1024 privileged (Kubernetes, `--network host`), set
+`APACHE_HTTP_PORT=8080` and `APACHE_HTTPS_PORT=8443` and map `-p 8080:8080 -p 8443:8443` instead.
 
 With Docker Compose, save this as `compose.yaml` in the application root:
 
@@ -104,8 +104,8 @@ curl --fail http://127.0.0.1:8080/health
 ```
 
 `YII_ENV` and `YII_DEBUG` are available to PHP, but your application entry scripts must read them; setting container
-variables does not override constants already defined by the application. The health endpoint checks the stack,
-so also request an application route. [Usage examples](docs/examples.md) cover CLI commands and cleanup.
+variables does not override constants already defined by the application. The health endpoint checks the stack, so also
+request an application route. [Usage examples](docs/examples.md) cover CLI commands and cleanup.
 
 For production, build an application image on top of `prod` so the code and its dependencies are part of the image:
 
@@ -116,9 +116,9 @@ COPY --chown=www-data:www-data . /var/www/app
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 ```
 
-Keep credentials, `.env`, `.git`, local `vendor/`, `node_modules/`, runtime files, and uploads out of the build
-context with an application `.dockerignore`. Include `composer.lock`; decide which application Composer scripts and
-plugins may run during the build. The image does not configure your database or persist uploaded files.
+Keep credentials, `.env`, `.git`, local `vendor/`, `node_modules/`, runtime files, and uploads out of the build context
+with an application `.dockerignore`. Include `composer.lock`; decide which application Composer scripts and plugins may
+run during the build. The image does not configure your database or persist uploaded files.
 
 ## Variants
 
@@ -131,8 +131,8 @@ plugins may run during the build. The image does not configure your database or 
 - `prod`: OPcache without timestamp validation and with the tracing JIT, session cookies restricted to HTTPS
   (`session.cookie_secure`) and `SameSite=Strict`, no Composer install at startup by default.
 - `dev`: OPcache revalidates files on every request, JIT disabled, Xdebug loaded.
-- `full`: `dev` plus the Oracle and SQL Server drivers and assertions enabled, JIT disabled as in `dev` (Xdebug
-  is loaded); intended for test suites that cover every database driver.
+- `full`: `dev` plus the Oracle and SQL Server drivers and assertions enabled, JIT disabled as in `dev` (Xdebug is
+  loaded); intended for test suites that cover every database driver.
 
 Compressed size of the PHP 8.5 images:
 
@@ -144,8 +144,8 @@ Compressed size of the PHP 8.5 images:
 
 ## Configuration
 
-The most common settings are listed below. See the [configuration reference](docs/configuration.md) for every
-variable, its default and the startup sequence.
+The most common settings are listed below. See the [configuration reference](docs/configuration.md) for every variable,
+its default and the startup sequence.
 
 | Variable                 | Default                              | Description                                                    |
 | ------------------------ | ------------------------------------ | -------------------------------------------------------------- |
@@ -182,35 +182,34 @@ The whole stack (the entrypoint, `supervisord`, Apache and PHP-FPM) runs as the 
 arbitrary-UID modes run without root; root mode is an explicit choice:
 
 - **`www-data`** (default, the image declares `USER www-data`).
-- **Any UID**, with `--user <uid>:<gid>` or Compose `user:`. The UID needs no account in the image, so files created
-  in a bind-mounted project belong to the host user. The entrypoint cannot change ownership in this mode; when the
+- **Any UID**, with `--user <uid>:<gid>` or Compose `user:`. The UID needs no account in the image, so files created in
+  a bind-mounted project belong to the host user. The entrypoint cannot change ownership in this mode; when the
   application directory is not writable it says so and names the remedy.
 - **Root**, as an explicit opt-in with `--user root`: the entrypoint initializes as root (directories, `FIX_PERMS`
-  before a Composer install), then Apache and PHP-FPM drop their workers to `www-data`, as in v1. Nothing root
-  sources, executes or loads may be written by `www-data`, and the generated private key is readable by root only.
+  before a Composer install), then Apache and PHP-FPM drop their workers to `www-data`, as in v1. Nothing root sources,
+  executes or loads may be written by `www-data`, and the generated private key is readable by root only.
 
 Runtime state (pid files, sockets, the Apache runtime environment, generated certificates, PHP sessions and temporary
-files) lives under `/run/yii2` and is created at every start for the running user. In the two non-root modes no
-process can gain root, so the class of privilege escalation that the root mode must guard against does not exist.
+files) lives under `/run/yii2` and is created at every start for the running user. In the two non-root modes no process
+can gain root, so the class of privilege escalation that the root mode must guard against does not exist.
 
-Ports 80 and 443 work as a non-root user under `docker run`, because Docker allows unprivileged processes to bind
-every port. Kubernetes, `--network host` and other runtimes that keep ports below 1024 privileged need
-`APACHE_HTTP_PORT` and `APACHE_HTTPS_PORT` (for example `8080` and `8443`); the entrypoint stops with that remedy when
-the configured port cannot be bound. The container side of the port mappings changes with them: `-p 8080:80` becomes
-`-p 8080:8080`. See the [configuration reference](docs/configuration.md#users-and-privileges) for the read-only root
-filesystem flags.
+Ports 80 and 443 work as a non-root user under `docker run`, because Docker allows unprivileged processes to bind every
+port. Kubernetes, `--network host` and other runtimes that keep ports below 1024 privileged need `APACHE_HTTP_PORT` and
+`APACHE_HTTPS_PORT` (for example `8080` and `8443`); the entrypoint stops with that remedy when the configured port
+cannot be bound. The container side of the port mappings changes with them: `-p 8080:80` becomes `-p 8080:8080`. See the
+[configuration reference](docs/configuration.md#users-and-privileges) for the read-only root filesystem flags.
 
 ## Health checks
 
-- `GET /health` returns a JSON status document produced by PHP-FPM. Change the path with `HEALTHCHECK_PATH` or
-  disable it with `ENABLE_HEALTH_ENDPOINT=false`.
-- The Docker `HEALTHCHECK` runs the `healthcheck` command, which requests the reserved, loopback-only `/__health`
-  path through Apache and PHP-FPM. The container becomes unhealthy when either of them stops answering.
+- `GET /health` returns a JSON status document produced by PHP-FPM. Change the path with `HEALTHCHECK_PATH` or disable
+  it with `ENABLE_HEALTH_ENDPOINT=false`.
+- The Docker `HEALTHCHECK` runs the `healthcheck` command, which requests the reserved, loopback-only `/__health` path
+  through Apache and PHP-FPM. The container becomes unhealthy when either of them stops answering.
 
 ## Extending the image
 
-The images contain neither the compiler toolchain nor the PHP source tarball. The included `install-extensions`
-command compiles extensions in a derived image in one step:
+The images contain neither the compiler toolchain nor the PHP source tarball. The included `install-extensions` command
+compiles extensions in a derived image in one step:
 
 ```dockerfile
 FROM ghcr.io/yii2-extensions/apache:8.5-debian-prod
@@ -220,18 +219,18 @@ RUN install-extensions amqp sockets
 USER www-data
 ```
 
-The image runs as `www-data`, so every step that installs packages or extensions needs `USER root` first, and the
-image should switch back to `USER www-data` afterwards; `install-extensions` stops with that hint when it is not root.
+The image runs as `www-data`, so every step that installs packages or extensions needs `USER root` first, and the image
+should switch back to `USER www-data` afterwards; `install-extensions` stops with that hint when it is not root.
 
 It accepts the extension names and version syntax of
-[`install-php-extensions`](https://github.com/mlocati/docker-php-extension-installer) (PECL and bundled extensions).
-It downloads the exact PHP source the image was built from and verifies its SHA-256 checksum, installs the
-toolchain, builds the extensions, then removes the toolchain, the source and the build-only packages while keeping
-the shared libraries the new extensions load. The build fails when a library is left unresolved or PHP reports a
-startup warning. The added size depends on the extensions and their runtime libraries.
+[`install-php-extensions`](https://github.com/mlocati/docker-php-extension-installer) (PECL and bundled extensions). It
+downloads the exact PHP source the image was built from and verifies its SHA-256 checksum, installs the toolchain,
+builds the extensions, then removes the toolchain, the source and the build-only packages while keeping the shared
+libraries the new extensions load. The build fails when a library is left unresolved or PHP reports a startup warning.
+The added size depends on the extensions and their runtime libraries.
 
-Ghostscript is not included, so Imagick reads and writes raster formats (JPEG, PNG, WebP, GIF and others) but not
-PDF, PS or EPS. Add it in a derived image when you need them:
+Ghostscript is not included, so Imagick reads and writes raster formats (JPEG, PNG, WebP, GIF and others) but not PDF,
+PS or EPS. Add it in a derived image when you need them:
 
 ```dockerfile
 USER root
@@ -243,21 +242,21 @@ USER www-data
 
 Version 2 contains breaking changes. Review each item before switching tags.
 
-- **No toolchain in the image.** Images ship without compilers and PHP sources. Derived images that compile
-  extensions use the included `install-extensions` command (see [Extending the image](#extending-the-image)).
-- **Runs as `www-data`.** The image declares `USER www-data` and the whole stack runs as the container user; `docker
-exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts on Linux (v1 changed the owner of the
-  project to `www-data` instead), or `--user root` for the v1 behavior (root initialization, `FIX_PERMS`, workers as
-  `www-data`). Derived images need `USER root` before installing packages or extensions and `USER www-data` after;
-  application files copied into a derived image must be readable by the runtime user, and directories used by
-  Composer or the application must be writable (the quick start uses `COPY --chown=www-data:www-data`).
-- **Runtime state moved to `/run/yii2`.** Pid files, the PHP-FPM socket (`/run/yii2/php/php-fpm.sock`), the
-  supervisor socket, PHP sessions (`PHP_SESSION_PATH=/run/yii2/sessions`), PHP temporary files and the generated
-  self-signed certificate (`/run/yii2/ssl`) are created at every start. Generated certificates are no longer written
-  to `SSL_DIR` and do not survive a restart; mounted certificates must be readable by the container user, otherwise the
-  container serves HTTP only and logs why. `/etc/apache2` and `/etc/apache2/ssl` belong to root.
-- **No `sudo`, `gosu`, `vim-tiny` or `brotli` CLI.** `www-data` no longer has passwordless `sudo`, and the entrypoint
-  no longer re-executes itself as root.
+- **No toolchain in the image.** Images ship without compilers and PHP sources. Derived images that compile extensions
+  use the included `install-extensions` command (see [Extending the image](#extending-the-image)).
+- **Runs as `www-data`.** The image declares `USER www-data` and the whole stack runs as the container user;
+  `docker exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts on Linux (v1 changed the owner
+  of the project to `www-data` instead), or `--user root` for the v1 behavior (root initialization, `FIX_PERMS`, workers
+  as `www-data`). Derived images need `USER root` before installing packages or extensions and `USER www-data` after;
+  application files copied into a derived image must be readable by the runtime user, and directories used by Composer
+  or the application must be writable (the quick start uses `COPY --chown=www-data:www-data`).
+- **Runtime state moved to `/run/yii2`.** Pid files, the PHP-FPM socket (`/run/yii2/php/php-fpm.sock`), the supervisor
+  socket, PHP sessions (`PHP_SESSION_PATH=/run/yii2/sessions`), PHP temporary files and the generated self-signed
+  certificate (`/run/yii2/ssl`) are created at every start. Generated certificates are no longer written to `SSL_DIR`
+  and do not survive a restart; mounted certificates must be readable by the container user, otherwise the container
+  serves HTTP only and logs why. `/etc/apache2` and `/etc/apache2/ssl` belong to root.
+- **No `sudo`, `gosu`, `vim-tiny` or `brotli` CLI.** `www-data` no longer has passwordless `sudo`, and the entrypoint no
+  longer re-executes itself as root.
 - **Node.js is no longer downloaded at startup.** `dev` and `full` include Node.js 24 and npm; `prod` does not. Build
   front-end assets in your application image or in a separate build stage.
 - **`prod` skips `composer install` by default.** Install dependencies in the application image, or set
@@ -265,33 +264,32 @@ exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts o
 - **`FAIL_ON_*` flags are honored.** `FAIL_ON_SERVICE_TIMEOUT` and `FAIL_ON_COMPOSER_ERROR` default to `false`, so an
   unreachable service or a failed Composer install is logged and startup continues; v1 aborted the container. Set them
   to `true` to keep failing fast. `FAIL_ON_MIGRATION_ERROR` defaults to `true`.
-- **Health endpoint served from the image.** Nothing is written to `web/` any more; remove the `web/health/`
-  directory that v1 created in the application. `/__health` is reserved. The container now turns unhealthy when
-  PHP-FPM is down.
+- **Health endpoint served from the image.** Nothing is written to `web/` any more; remove the `web/health/` directory
+  that v1 created in the application. `/__health` is reserved. The container now turns unhealthy when PHP-FPM is down.
 - **No User-Agent filter.** Requests from clients whose User-Agent contains `bot`, `curl`, `wget`, `python` or `scan`
   are no longer rejected with 403. Block unwanted clients at your proxy or firewall if needed.
 - **Single virtual host file.** `sites-available/vhost-ssl.conf` and `sites-available/vhost-ssl-full.conf` are gone;
   `sites-available/vhost.conf` is driven by Apache defines and the entrypoint no longer rewrites configuration files.
-  `APACHE_HTTPS_PORT` is not opened when `APACHE_SSL_ENABLED=false`. Images that replaced or patched these files must
-  be updated.
-- **Apache defaults.** The ineffective `<LimitExcept>` block, the inert global rewrite rules and
-  `07-rate-limiting.conf` are removed. Debian's default configuration snippets are disabled, so the `Server` header is
-  `Apache` and nothing is logged to files inside the container.
+  `APACHE_HTTPS_PORT` is not opened when `APACHE_SSL_ENABLED=false`. Images that replaced or patched these files must be
+  updated.
+- **Apache defaults.** The ineffective `<LimitExcept>` block, the inert global rewrite rules and `07-rate-limiting.conf`
+  are removed. Debian's default configuration snippets are disabled, so the `Server` header is `Apache` and nothing is
+  logged to files inside the container.
 - **Shorter `PHP_DISABLE_FUNCTIONS` default.** Web requests now block only the shell functions (`exec`, `passthru`,
   `shell_exec`, `system`, `proc_open`, `popen`); `parse_ini_file` and `show_source` are available again. The list is
-  applied to the PHP-FPM master instead of the pool, so pools you add inherit it and cannot re-enable its functions
-  with `php_admin_value[disable_functions]`; set the variable instead.
-- **PHP-FPM status is opt-in.** Set `ENABLE_FPM_STATUS=true` to serve `PHP_FPM_STATUS_PATH` and `PHP_FPM_PING_PATH`
-  to loopback only. `/fpm-status-full` is replaced by `?full` on the status path.
+  applied to the PHP-FPM master instead of the pool, so pools you add inherit it and cannot re-enable its functions with
+  `php_admin_value[disable_functions]`; set the variable instead.
+- **PHP-FPM status is opt-in.** Set `ENABLE_FPM_STATUS=true` to serve `PHP_FPM_STATUS_PATH` and `PHP_FPM_PING_PATH` to
+  loopback only. `/fpm-status-full` is replaced by `?full` on the status path.
 - **SQL Server drivers.** `sqlsrv` and `pdo_sqlsrv` 5.13 come from the extension installer instead of a patched 5.12.0
   build.
-- **Xdebug configuration.** The unused `xdebug.ini` is removed; configure Xdebug with `XDEBUG_MODE` and
-  `XDEBUG_CONFIG` (see the [configuration reference](docs/configuration.md#xdebug)).
+- **Xdebug configuration.** The unused `xdebug.ini` is removed; configure Xdebug with `XDEBUG_MODE` and `XDEBUG_CONFIG`
+  (see the [configuration reference](docs/configuration.md#xdebug)).
 - **No JIT in `full`.** Xdebug made PHP disable the tracing JIT anyway and warn at every startup; `full` now turns it
   off like `dev`. `prod` keeps the tracing JIT.
 - **Inert Apache variables removed.** `APACHE_RUN_USER`, `APACHE_RUN_GROUP`, `APACHE_RUN_DIR`, `APACHE_PID_FILE` and
-  `APACHE_LOCK_DIR` are no longer in the image environment. `/etc/apache2/envvars` always overrode them, so setting
-  them never had an effect; drop them from your configuration.
+  `APACHE_LOCK_DIR` are no longer in the image environment. `/etc/apache2/envvars` always overrode them, so setting them
+  never had an effect; drop them from your configuration.
 - **Published assets are served.** The Yii directory protection is anchored at `/var/www/app`, so files under
   `web/assets/<hash>/widgets/` or `web/assets/<hash>/vendor/` (jQuery UI, for example) no longer return 403.
 
@@ -304,8 +302,8 @@ exec` defaults to `www-data`. Use `--user "$(id -u):$(id -g)"` for bind mounts o
 See [testing](docs/testing.md) for isolated runtime validation and the distinction between the fixture and a real
 application test. No build command below publishes images; never use the `digest-*` targets for local validation.
 
-`docker-bake.hcl` is the single source of truth for PHP versions, variants and tags. Adding a PHP version is one
-entry in its `PHP` variable; an entry whose `base` differs from `version` (a release candidate such as `8.6-rc`) is
+`docker-bake.hcl` is the single source of truth for PHP versions, variants and tags. Adding a PHP version is one entry
+in its `PHP` variable; an entry whose `base` differs from `version` (a release candidate such as `8.6-rc`) is
 experimental, excluded from the default group and never published.
 
 ```bash
@@ -333,34 +331,30 @@ Continuous integration:
 
 ## Documentation
 
-Practical guides for selecting images, running Yii applications, and
-validating containers.
+Practical guides for selecting images, running Yii applications, and validating containers.
 
-- 📚 [Installation Guide](docs/installation.md): image tags, application
-  mounts, and startup.
-- ⚙️ [Configuration Guide](docs/configuration.md): environment variables,
-  ports, and permissions.
-- 💡 [Usage Examples](docs/examples.md): Compose, CLI commands, and application
-  images.
+- 📚 [Installation Guide](docs/installation.md): image tags, application mounts, and startup.
+- ⚙️ [Configuration Guide](docs/configuration.md): environment variables, ports, and permissions.
+- 💡 [Usage Examples](docs/examples.md): Compose, CLI commands, and application images.
 - 🔄 [Upgrading from v1](#upgrading-from-v1)
-- 🧪 [Testing Guide](docs/testing.md): isolated image checks and application
-  validation.
+- 🧪 [Testing Guide](docs/testing.md): isolated image checks and application validation.
+
+The guides are published at <https://yii2-framework.github.io/docs/development-tools/docker/>.
 
 ## AI assistance
 
-AI agents: use the repository guides and source for the installed revision.
-For a [documentation deployment](https://yii2-framework.github.io/docs/) with
-`llms.txt`, read that index first. When Markdown export is enabled, append
-`index.md` to a page URL.
+AI agents: read the [documentation index](https://yii2-framework.github.io/docs/llms.txt) and fetch the Markdown version
+of a page by appending `index.md` to its URL. The
+[AI agents guide](https://yii2-framework.github.io/docs/project/ai-agents/) covers skill installation, client setup and
+verification.
 
-- 🤖 [yii2-docker-environment skill](docs/agents.md): image selection, isolated
-  checks, and cleanup.
+- 🤖 [`yii2-docker-environment` skill](docs/agents.md): Docker environment.
+- 🧭 [`yii2-framework` skill](https://yii2-framework.github.io/docs/guide/skills/yii2-framework/): Yii 22.0 application
+  conventions.
 
-The [skill source](skills/yii2-docker-environment/SKILL.md) covers HTTP/HTTPS,
-PHP-FPM, and filesystem behavior.
-
-If the hosted sources are unavailable, use the repository guides and locally
-available skills.
+The hosted documentation covers Yii 22.0. If it does not match the installed revision or is unavailable, use the
+[repository guides](#documentation), the [skill source](skills/yii2-docker-environment/SKILL.md), the source PHPDoc and
+the [changelog](CHANGELOG.md).
 
 ## Package information
 
